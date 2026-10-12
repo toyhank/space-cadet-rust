@@ -1,0 +1,15 @@
+/target/
+/pkg/
+*.dat
+*.DAT
+.DS_Store
+node_modules/
+assets/vpx-local/
+tests/artifacts/
+dist/
+NUL
+*.png
+*.bmp
+*.7z
+assets/vpx-local/
+

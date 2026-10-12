@@ -1,0 +1,13 @@
+
+.cabinet-hall{border:1px solid #aa8245;margin:10px 0;background:#120f0e;padding:10px 12px;
+  box-shadow:inset 0 0 14px #542d193a}
+.hall-title{font:700 13px "Consolas",monospace;letter-spacing:.12em;text-align:center;color:#f9cb76}
+#game-hall-list{margin:8px 0;padding:0;list-style:none}
+#game-hall-list li{display:flex;justify-content:space-between;align-items:center;
+  padding:3px 0;border-bottom:1px dotted #6c56353d;
+  color:#c5ac7f;font:12px "Consolas",monospace}
+#game-hall-list li strong{color:#ffd28a;font-variant-numeric:tabular-nums}
+.hall-entry{display:flex;gap:6px;margin-top:10px}
+.hall-entry input{margin:0;min-width:0;width:1px;flex:1;background:#0f1728;border:1px solid #826948;
+  color:#eed7a7;padding:6px 9px;font-size:12px}
+.hall-entry button{padding:6px 9px;font-size:11px;background:#43351c;border-color:#ad8a4c;color:#ffe5ac}

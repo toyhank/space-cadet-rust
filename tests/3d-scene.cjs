@@ -1,0 +1,32 @@
+const assert=require("node:assert/strict"),fs=require("node:fs");
+const {datMetadata,TYPES}=require("../renderer3d/dat-geometry.js");
+const file=fs.readFileSync("pinball.dat");
+const input=file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength);
+const layout=datMetadata(input);
+assert.equal(layout.groups,541);
+assert.equal(layout.table.width,365);
+assert.equal(layout.table.height,470);
+assert.equal(layout.table.originX,137);
+assert.equal(layout.table.originY,2);
+const objects=layout.components;
+assert.ok(objects.length>300);
+const type=(n)=>objects.filter(x=>x.type===n);
+assert.equal(type(TYPES.LEFT_FLIPPER).length,1);
+assert.equal(type(TYPES.RIGHT_FLIPPER).length,1);
+assert.equal(type(TYPES.BUMPER).length,7);
+assert.equal(type(TYPES.PLUNGER).length,1);
+assert.ok(type(TYPES.LIGHT).length>100);
+assert.equal(type(TYPES.LEFT_FLIPPER)[0].bounds.cx,145.5);
+assert.equal(type(TYPES.RIGHT_FLIPPER)[0].bounds.cx,219.5);
+for(const c of type(TYPES.BUMPER)){
+  assert.ok(c.bounds.cx>=0&&c.bounds.cx<=365);
+  assert.ok(c.bounds.cy>=0&&c.bounds.cy<=470);
+}
+const invalid=new Uint8Array(input);invalid[0]=0;
+assert.throws(()=>datMetadata(invalid.buffer),/签名/);
+const truncated=input.slice(0,250);
+assert.throws(()=>datMetadata(truncated));
+const html=fs.readFileSync("3d.html","utf8");
+assert.ok(html.includes('three@0.180.0'));
+assert.ok(html.includes('src="./renderer3d/main.js"'));
+console.log("PASS: Original DAT geometry, 7 real bumpers, left/right flippers, plunger, light positions and 3D entry.");

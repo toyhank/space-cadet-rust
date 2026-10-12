@@ -1,0 +1,14 @@
+[package]
+name = "space-cadet-rust"
+version = "0.2.0"
+edition = "2021"
+description = "Rust/WASM data-driven Space Cadet table renderer with user-supplied DAT resources"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"

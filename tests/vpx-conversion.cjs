@@ -1,0 +1,23 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+(async () => {
+  const { inspectGlb } = await import('../vpx/conversion.js');
+  assert.throws(() => inspectGlb(new Uint8Array(24)), /GLB/);
+  const bytes = fs.readFileSync('assets/vpx-local/space-cadet.glb');
+  const report = JSON.parse(fs.readFileSync('assets/vpx-local/space-cadet.report.json'));
+  const stats = inspectGlb(bytes);
+  assert.ok(stats.meshes > 100, 'Converted table has real meshes');
+  assert.ok(stats.textures > 10, 'Table has embedded artwork');
+  assert.equal(stats.bytes, bytes.length);
+  assert.equal(stats.meshes, report.meshes);
+  const json = JSON.parse(bytes.toString('utf8', 20, 20 + bytes.readUInt32LE(12)));
+  assert.ok(json.meshes.some(m => /flipper/i.test(m.name)));
+  assert.ok(json.meshes.some(m => /bumper/i.test(m.name)));
+  assert.ok(json.images.every(i => i.bufferView !== undefined || i.uri?.startsWith('data:')));
+  assert.equal(json.buffers.length, 1);
+  assert.ok(!json.buffers[0].uri);
+  assert.ok(json.materials.some(m => m.pbrMetallicRoughness?.baseColorTexture));
+  const truncated = bytes.subarray(0, 100);
+  assert.throws(() => inspectGlb(truncated), /长度/);
+  console.log('PASS: complete GLB, meshes, embedded textures/materials, cameras, malformed input.', stats);
+})().catch(e => { console.error(e); process.exitCode = 1; });

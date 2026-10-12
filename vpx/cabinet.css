@@ -1,0 +1,132 @@
+:root{--cabinet-frame:#162448;--cabinet-edge:#3b5691;--cabinet-gold:#f6bd60;--cabinet-amber:#ffb947;--cabinet-screen:#03070d}
+body:not(.inspection){grid-template-columns:minmax(0,1fr) minmax(320px,356px);background:#050915}
+body:not(.inspection) #inspector{display:none}
+body.inspection #game-cabinet{display:none}
+body.inspection{grid-template-columns:minmax(0,1fr) 310px}
+body:not(.inspection) #stage{background:#050812}
+body:not(.inspection) header{z-index:2}
+body:not(.inspection) header .brand{font-size:14px;text-shadow:0 2px 18px #000}
+body:not(.inspection) footer{font-size:10px;opacity:.52}
+#game-cabinet{border-left:1px solid #759bd88c;background:linear-gradient(100deg,#051020,#10224a 4%,#05112b 7%,#071127 92%,#234078 98%,#080b21);
+  min-width:0;min-height:0;padding:12px 13px;display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3c5282 transparent;gap:7px}
+#game-cabinet .cabinet-bezel{border:3px solid #304b7c;border-top-color:#6584bd;border-right-color:#12254a;
+ border-radius:17px 17px 12px 12px;box-shadow:inset 0 0 0 4px #0a1a3c,0 8px 28px #0009,0 0 0 1px #2e4980;
+ padding:8px;background:linear-gradient(95deg,#172c59,#08132a 5%,#060d19 95%,#132957)}
+.cabinet-art{height:clamp(116px,21vh,190px);min-height:116px;position:relative;overflow:hidden;
+ border:7px solid #74839d;border-bottom:5px solid #566981;box-shadow:inset 0 0 0 2px #2f3545,0 2px 0 #0a1634;
+ background:radial-gradient(ellipse at 72% 84%,#49235e 0%,transparent 44%),
+ linear-gradient(160deg,#030512 10%,#0a1130 55%,#010814);}
+.starfield{position:absolute;inset:0;opacity:.85;
+ background-image:radial-gradient(circle at 7% 11%,#a9e9ff 1px,transparent 2px),radial-gradient(circle at 26% 42%,#a5c4fc 1.2px,transparent 2px),
+ radial-gradient(circle at 75% 15%,#dae9ff 1px,transparent 2px),radial-gradient(circle at 56% 76%,#f4b6d3 1px,transparent 2px),
+ radial-gradient(circle at 86% 63%,#70e7f6 1px,transparent 2px),radial-gradient(circle at 40% 18%,#d8b7fa 1px,transparent 2px);
+ background-size:85px 80px,130px 150px,130px 110px,160px 170px,110px 140px,180px 130px}
+.planet{position:absolute;border-radius:50%;opacity:.86}.planet-left{width:70px;height:70px;bottom:-30px;left:-14px;box-shadow:inset -18px -16px 6px #1c4958;
+ background:radial-gradient(circle at 30% 27%,#b8ec7e,#41825f 58%,#1a2f50)}
+.planet-right{width:36px;height:36px;right:-9px;top:17px;background:radial-gradient(circle at 26% 30%,#ffcc8e,#e16b40,#5f2241)}
+.orbit{position:absolute;width:140px;height:42px;border:2px solid #bdc9ff75;border-radius:50%;transform:rotate(-21deg);right:6px;top:70px}
+.orbit-two{transform:rotate(39deg);width:120px;height:34px;top:75px;right:15px;border-color:#b1d8ff31}
+.ufo{position:absolute;right:40px;top:69px;width:74px;height:40px;transform:rotate(-15deg);filter:drop-shadow(0 3px 6px #000)}
+.ufo-dome{height:33px;width:37px;border-radius:60% 60% 30% 30%;position:absolute;left:18px;top:0;
+ background:linear-gradient(135deg,#b4f7fa,#5284b6 55%,#293f75);border:2px solid #e3f8ff}
+.ufo-body{height:20px;width:75px;border-radius:50%;position:absolute;top:20px;left:0;
+ background:linear-gradient(#edf3f9 5%,#6d80a2 45%,#cdddf2 65%,#34425c);border:2px solid #b3cde8}
+.cadet-heading{position:absolute;top:6px;left:16px;right:12px;transform:rotate(-4deg);pointer-events:none;text-shadow:3px 3px 0 #162447,0 5px 8px #000}
+.cadet-heading small{font-size:10px;letter-spacing:.4em;font-weight:800;color:#c9daf9}
+.cadet-heading strong{display:block;font:italic 900 clamp(34px,5vw,52px)/.88 Georgia,serif;letter-spacing:-.065em;color:#bda1e3}
+.cadet-heading em{display:block;margin-left:57px;font:italic 900 clamp(18px,2.8vw,29px)/1 Georgia,serif;color:#f3a4de;letter-spacing:.06em}
+#game-cabinet .cabinet-screen{border:5px solid #545c69;border-top-color:#9b9e9f;border-left-color:#858f9d;
+ box-shadow:inset 0 0 0 2px #2f3544,0 3px 2px #040713;background:var(--cabinet-screen);margin-top:7px;padding:12px}
+#game-cabinet .upper-screen{padding:10px 12px 12px}
+.cabinet-label{display:flex;justify-content:space-between;letter-spacing:.14em;color:#7e9ab8;font-size:9px;font-weight:800}
+#game-mode{color:#84d8b7;font-weight:700}
+.scoreboard-value{font:600 clamp(29px,3vw,42px)/1.5 "Consolas","Courier New",monospace;
+ letter-spacing:.035em;color:#ffbe58;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;
+ text-shadow:0 0 7px #d6813e7c,0 0 26px #a65f2d75;overflow:hidden}
+.ball-row{display:flex;justify-content:space-between;font:11px "Consolas",monospace;color:#9eacb9;align-items:center}
+.ball-row strong{color:#f0e0b9}.ball-row #game-save{color:#53cca5;letter-spacing:.05em;font-size:10px}
+#game-cabinet .dmd-screen{padding:10px 10px 8px;min-height:114px;
+ background:repeating-linear-gradient(0deg,#090708 0px,#090708 3px,#18120c 4px,#090708 5px)}
+.dot-matrix-header{display:flex;justify-content:space-between;color:#968468;font-size:9px;font-weight:700;letter-spacing:.22em}
+.dmd-live{color:#f1a751;font-size:9px;letter-spacing:.1em}
+.dmd-marquee{color:#f9a742;font-family:"Consolas",monospace;font-size:clamp(16px,1.65vw,20px);
+ text-align:center;margin-top:6px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+ text-shadow:0 0 5px #d87c3299}
+.dmd-secondary{color:#ffe0a5;font:bold 11px "Consolas",monospace;text-align:center;letter-spacing:.06em;margin-top:3px}
+.dmd-award{font:10px "Consolas",monospace;color:#9a6f43;text-align:center;margin-top:8px}
+#game-cabinet .cabinet-stats{padding:11px 12px;min-height:0;margin-top:7px}
+.rank-top{display:flex;justify-content:space-between;gap:14px;align-items:center}
+.rank-top>span{font:9px "Consolas",monospace;letter-spacing:.12em;color:#92a4bb;white-space:nowrap}
+.rank-top strong{display:block;font-size:12px;color:#e7c58d;margin-top:2px;letter-spacing:0}
+.cabinet-progress{height:5px;background:#253342;overflow:hidden;border-radius:10px;margin-top:9px}
+.cabinet-progress>div{width:0;height:100%;background:linear-gradient(90deg,#5892d7,#ffca68);transition:width .25s}
+#game-cabinet .play-mission{background:linear-gradient(180deg,#080e1c,#111a2d);border:1px solid #7084ad65;
+ border-radius:4px;padding:10px 11px;margin:12px 0 9px}
+.mission-eyebrow{display:flex;justify-content:space-between;color:#86a1c8;font-size:9px;letter-spacing:.12em}
+.mission-eyebrow span:last-child{color:#f3cb84}
+.play-mission strong{font:700 15px Georgia,serif;margin:5px 0 2px;color:#e9d2f1}
+.play-mission span{font-size:11px;color:#9faec3}
+.mission-progress{margin-top:9px}
+.mission-select-row{display:flex;gap:7px;margin-top:8px}
+.mission-select-row button{padding:5px 8px;font-size:11px;border-radius:3px;min-width:34px}
+#game-accept-mission{flex:1;background:#263f6a;color:#e4f3ff;border-color:#5577ad}
+.mission-select-row button:disabled{opacity:.35}
+.cabinet-readouts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 5px;padding:8px 0}
+.cabinet-readouts small{display:block;color:#79899d;font-size:9px;letter-spacing:.1em}
+.cabinet-readouts strong{display:block;font:bold 13px "Consolas",monospace;color:#dfc28a;margin-top:2px;white-space:nowrap}
+.cabinet-readouts #game-fuel{font-size:10px;letter-spacing:-.05em}
+.lamp-banks{display:flex;flex-wrap:wrap;gap:5px;padding:7px 0 10px}
+.lamp-banks span{padding:3px 6px;border:1px solid #52607f;color:#627089;border-radius:2px;
+ font:9px "Consolas",monospace}
+.lamp-banks span.lit{background:#523b17;color:#ffd479;border-color:#f8ba62;box-shadow:0 0 8px #ce86477a}
+.cabinet-controls{border-top:1px solid #34425b;padding-top:11px;margin-top:3px}
+.cabinet-actions{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:5px}
+.cabinet-actions button{font-size:11px;padding:7px 5px}
+.cabinet-actions #game-start:not([hidden]){grid-column:span 1}
+.cabinet-actions .game-primary{background:linear-gradient(#eed397,#c99547);color:#1c1d21;border-color:#e9cb86;font-weight:800}
+.cabinet-actions #game-exit{border-color:#995f56;color:#dbaaaa}
+.charge-meter{height:5px;margin-top:10px;background:#23314b}
+.charge-meter>div{background:linear-gradient(90deg,#87b7f7,#ffd07d)}
+.cabinet-shortcuts{display:flex;justify-content:space-between;gap:4px;margin-top:9px;color:#8499af;font:9px "Consolas",monospace}
+.cabinet-tools{display:flex;align-items:center;gap:8px;margin-top:8px;justify-content:space-between}
+.cabinet-tools button{padding:4px 9px;font-size:10px}
+.cabinet-sound{display:flex!important;align-items:center;gap:4px!important;font-size:10px!important;margin:0!important;color:#b7bfce!important}
+.cabinet-sound input{accent-color:#d9b477}
+.cabinet-tools a{font-size:10px;color:#7693b8}
+.cabinet-audio-volume{display:flex;gap:9px;align-items:center;margin-top:7px;color:#aabbd2;font-size:10px}
+.cabinet-audio-volume label{white-space:nowrap;min-width:58px}
+.cabinet-audio-volume output{color:#ffd08a}
+.cabinet-audio-volume input[type=range]{flex:1;width:100%;height:12px;accent-color:#deb66b;cursor:pointer}
+.cabinet-credit{font-size:9px;letter-spacing:.09em;text-align:center;color:#8d9dbf;padding:6px}
+.cabinet-credit span{display:block;color:#5e718b;font-size:9px;margin-top:3px}
+body:not(.inspection) .game-hud{display:none}
+body:not(.inspection) #game-message{bottom:74px;background:#0a152be8;border-color:#4f76acb0;color:#ffe6b7}
+body:not(.inspection) .game-touch button{border-color:#6788c5}
+@media(max-height:780px) and (min-width:701px){
+ #game-cabinet{padding:6px 9px;gap:2px}
+ .cabinet-art{height:107px;min-height:107px}
+ #game-cabinet .cabinet-screen{padding:7px 10px;margin-top:5px;border-width:4px}
+ .scoreboard-value{font-size:29px;line-height:1.35}
+ .dmd-marquee{font-size:16px}
+ #game-cabinet .dmd-screen{min-height:92px}
+ .cabinet-readouts{gap:5px}
+ .cabinet-readouts strong{font-size:11px}
+ #game-cabinet .play-mission{margin:6px 0;padding:7px}
+ .cabinet-credit{padding:2px}
+}
+@media(max-width:1100px) and (min-width:701px){
+ body:not(.inspection){grid-template-columns:minmax(0,1fr) 310px}
+ #game-cabinet{padding:8px}
+ .scoreboard-value{font-size:32px}
+}
+@media(max-width:700px){
+ body:not(.inspection){display:flex;flex-direction:column;overflow:auto;height:auto}
+ body:not(.inspection) #stage{height:65dvh;min-height:390px;flex:none}
+ #game-cabinet{overflow:visible;width:100%;padding:10px;flex:none;border-left:0;border-top:1px solid #5f79b0}
+ .cabinet-art{height:135px}
+ .scoreboard-value{font-size:36px}
+ .dmd-marquee{font-size:18px}
+ #game-cabinet .cabinet-bezel{max-width:540px;width:100%;margin:auto}
+ body:not(.inspection) header{top:12px;left:15px;right:12px}
+ body:not(.inspection) .badge{display:none}
+}

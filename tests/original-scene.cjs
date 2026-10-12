@@ -1,0 +1,31 @@
+const fs=require("node:fs"),assert=require("node:assert/strict"),vm=require("node:vm");
+const {scanOriginalObjects}=require("../dat-layout.js");
+const {composeScene,stepFlipperFrame}=require("../dat-scene.js");
+const stub={width:600,height:480,checked:true,textContent:"",classList:{toggle(){}},addEventListener(){},getContext(){return{fillRect(){},fillText(){},drawImage(){},putImageData(){}}}};
+const env={document:{getElementById(){return stub}},location:{protocol:"file:"},console,TextDecoder,Uint8Array,Uint8ClampedArray,DataView,ImageData:class {},WebAssembly};
+vm.createContext(env);
+const src=fs.readFileSync("viewer.js","utf8").replace("draw();initWasm().then(autoLoadOriginal);","");
+vm.runInContext(src,env);
+const file=fs.readFileSync("PINBALL.DAT");
+const bytes=file.buffer.slice(file.byteOffset,file.byteOffset+file.length);
+const archive=env.getDataFile(bytes),layout=scanOriginalObjects(bytes,archive.items);
+assert.equal(archive.groups,541);
+assert.equal(archive.items.length,318);
+assert.equal(layout.offsetX,137);assert.equal(layout.offsetY,2);
+const left=layout.components.find(x=>x.type===1003),right=layout.components.find(x=>x.type===1004);
+assert.ok(left&&right);
+assert.equal(left.name,"a_flip1");assert.equal(right.name,"a_flip2");
+assert.ok(left.visualStates.length>=4&&right.visualStates.length>=4);
+assert.ok(left.extendMs>0&&left.retractMs>0);
+assert.ok(stepFlipperFrame(left,true,left.extendMs));
+assert.equal(left.current,left.visualStates.length-1);
+assert.ok(stepFlipperFrame(left,false,left.retractMs));
+assert.equal(left.current,0);
+const image=composeScene(archive,layout);
+assert.equal(image.width,600);assert.equal(image.height,480);
+assert.equal(image.rgba.length,600*480*4);
+assert.ok(image.active>10);
+assert.ok(image.drawn>10);
+console.log("ORIGINAL DAT: groups="+archive.groups+" bitmaps="+archive.items.length+
+" components="+layout.components.length+" active="+image.active+
+" flipper frames="+left.visualStates.length+"/"+right.visualStates.length);
