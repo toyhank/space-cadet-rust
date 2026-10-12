@@ -7,6 +7,7 @@ async function main(){
   const exe=process.env.CHROME_PATH||"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   const chrome=spawn(exe,["--headless=new","--no-first-run","--no-default-browser-check",
     "--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--enable-webgl",
+    "--autoplay-policy=no-user-gesture-required", // Headless CDP key events lack trusted gestures
     "--remote-allow-origins=*","--remote-debugging-port="+port,
     "--user-data-dir="+profile,"--window-size=1560,960","about:blank"],{stdio:"ignore",windowsHide:true});
   let ws;
@@ -90,6 +91,14 @@ async function main(){
       sound.checked=true;sound.dispatchEvent(new Event('change',{bubbles:true}));
     })()`);
     assert.equal(await evalJs("window.__vpxViewer.game.audio.enabled"),true);
+    await call("Input.dispatchKeyEvent",{
+      type:"keyDown",key:"a",code:"KeyA",windowsVirtualKeyCode:65});
+    await call("Input.dispatchKeyEvent",{
+      type:"keyUp",key:"a",code:"KeyA",windowsVirtualKeyCode:65});
+    await pause(600);
+    assert.equal(await evalJs("window.__vpxViewer.game.audio.context?.state"),"running",
+      "WebAudio should unlock after a real keyboard gesture");
+    assert.equal(await evalJs("window.__vpxViewer.game.audio.play('missionStart')"),true);
     assert.equal(await evalJs("window.__vpxViewer.root.getObjectByName('digitgrid')?.visible"),false);
     assert.equal(await evalJs("window.__vpxViewer.game.flipperGroups.left!==undefined && window.__vpxViewer.game.flipperGroups.right!==undefined"),true);
     await evalJs("window.__vpxViewer.game.game.plungerCharge=.9;window.__vpxViewer.game.launch()");

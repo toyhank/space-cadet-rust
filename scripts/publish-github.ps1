@@ -3,7 +3,8 @@
 #        -RepoUrl https://github.com/toyhank/space-cadet-rust.git
 param(
   [Parameter(Mandatory=$true)]
-  [string]$RepoUrl
+  [string]$RepoUrl,
+  [string]$Message = "feat: VPX Space Cadet web gameplay, local WASM import and Pages deployment"
 )
 $ErrorActionPreference = "Stop"
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot ".."))
@@ -41,7 +42,7 @@ if ($remoteNames -contains "origin") {
   git remote add origin $RepoUrl
 }
 if ($staged.Count -gt 0) {
-  git commit -m "feat: VPX Space Cadet web gameplay, local WASM import and Pages deployment"
+  git commit -m $Message
   if ($LASTEXITCODE -ne 0) { throw "Commit failed: check git user.name/user.email." }
 }
 git branch -M main
