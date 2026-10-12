@@ -133,6 +133,29 @@ async function main(){
     fs.mkdirSync(out,{recursive:true});
     const shot=await call("Page.captureScreenshot",{format:"png"});
     fs.writeFileSync(path.join(out,"vpx-play.png"),Buffer.from(shot.data,"base64"));
+    const rampVisual=await evalJs(`(()=>{
+      const view=window.__vpxViewer.game,g=view.game;
+      g.activeBalls.length=0;g.plungerLoaded=false;
+      const ball=g.spawnBall(.12,.415,0,0);
+      ball.y=.104;ball.vy=-.16;
+      let landed=false;
+      for(let i=0;i<45;i++){
+        g.tick(1/180);
+        landed ||= ball.onRamp==="Ramp009";
+        if(landed)break;
+      }
+      view.syncBalls();
+      const mesh=view.ballModels.get(ball.id)?.mesh;
+      return {landed,y:ball.y,renderY:mesh?.position.y,
+        aboveFloor:ball.y-ball.r,deck:ball.onRamp};
+    })()`);
+    assert.equal(rampVisual.landed,true,"Real JP v4.3 elevated ramp must support a falling ball");
+    assert.equal(rampVisual.deck,"Ramp009");
+    assert.ok(rampVisual.y>.07);
+    assert.ok(Math.abs(rampVisual.renderY-rampVisual.y)<.00001,
+      "Three.js ball must use physics Y instead of a constant height");
+    const raisedShot=await call("Page.captureScreenshot",{format:"png"});
+    fs.writeFileSync(path.join(out,"vpx-elevated-ramp.png"),Buffer.from(raisedShot.data,"base64"));
     const drainCheck=await evalJs(`(()=>{
       const view=window.__vpxViewer.game,g=view.game,m=g.physics.drainMouth;
       g.activeBalls.length=0;g.plungerLoaded=false;g.saverUntil=-100;

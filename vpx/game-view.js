@@ -291,10 +291,23 @@ export class VPXGameView {
     for(const b of toRender){
       if(!this.ballModels.has(b.id))this.addBall(b);
       const {mesh,shadow}=this.ballModels.get(b.id);
-      mesh.position.set(b.x,.0135-(b.sinkDepth||0),b.z);
+      mesh.position.set(b.x,b.y??b.r??.0122,b.z);
       shadow.position.set(b.x,.0015,b.z);
+      const altitude=Math.max(0,(b.y??.0122)-(b.r??.0122));
       shadow.visible=!b.sinking;
-      mesh.rotation.x+=b.vz*.013;mesh.rotation.z-=b.vx*.013;
+      // Shadow disperses on high ramps / during a jump. Its footprint
+      // remains projected onto the playfield floor.
+      const shadowScale=1+Math.min(2,altitude*13);
+      shadow.scale.setScalar(shadowScale);
+      // Ball spin follows travelled distance, not render FPS. A 90Hz display
+      // must not make it appear to rotate faster than a 30Hz display.
+      const prev=mesh.userData.previousPosition;
+      if(prev){
+        const r=Math.max(.001,b.r||.0122);
+        mesh.rotation.x+=(b.z-prev.z)/r;
+        mesh.rotation.z-=(b.x-prev.x)/r;
+      }
+      mesh.userData.previousPosition={x:b.x,z:b.z};
     }
   }
   animateGates(){
@@ -391,7 +404,8 @@ export class VPXGameView {
     if(["launch","bumper","flipperHit","target","sling","falling","drain",
       "missionStart","missionStage","missionComplete","missionAbort","extraBall",
       "rank","skillShot","gateOpen","gateBlock","spinner","ballLocked",
-      "autoPlunge","multiball","gameOver","save","ballSearch"].includes(event.type))
+      "autoPlunge","multiball","gameOver","save","ballSearch",
+      "rampLand","rampRail","rampExit","ballBounce"].includes(event.type))
       this.playSound(event.type);
     if(event.type==="message"){
       $("game-message").textContent=event.text;

@@ -105,6 +105,8 @@ export class CadetGame{
   }
   spawnBall(x,z,vx,vz){
     const ball={id:this.nextBallId++,x,z,vx,vz,r:ballRadius,
+      // Y-up 3D physics; the floor is Y=0 and the ball rests at radius.
+      y:ballRadius,vy:0,onRamp:null,surfaceY:0,roll:true,
       trail:[],lastContact:new Map(),age:0,portalUntil:0};
     this.activeBalls.push(ball);
     this.send("spawn",{id:ball.id,x,z});

@@ -1,5 +1,6 @@
+import {LayeredRampWorld} from "./height-field.js";
 /**
- * Horizontal VPX footprint collision solver.
+ * VPX 3D layered contact solver (projected walls + elevated ramp surfaces).
  *
  * This is not the native VPX 3D engine: it uses genuine table hit boundaries,
  * gate/target edges, bumper circles, physical heights and flipper articulation.
@@ -29,6 +30,7 @@ export class VPXCollisionWorld {
     if(!data||data.version!==1||!Array.isArray(data.segments))
       throw Error("Missing VPX collision geometry");
     this.data=data;this.edges=[];this.cells=new Map();
+    this.heightField=new LayeredRampWorld(data.ramps||[]);
     // One-way hinges are solved dynamically, not inserted as rigid walls.
     // A stationary 2D line at their location would trap the launch ball.
     this.gates=(data.segments||[]).filter(o=>o.type==="Gate"&&!o.twoWay);
@@ -135,6 +137,10 @@ export class VPXCollisionWorld {
     for(let pass=0;pass<2;pass++){
       for(const edge of found){
         const source=edge.source,name=source.name;
+        // The 2D projected wall only has contact when its vertical span
+        // intersects the actual 3D ball. Elevated balls can clear it.
+        if((ball.y??ball.r)-ball.r>source.top+.001||
+           (ball.y??ball.r)+ball.r<source.bottom-.001)continue;
         // VPX gate pawls are one-way. Shooter-lane gates open under a
         // rising ball; resolving them like a rigid wall reverses every
         // launch before the ball has reached the table.
@@ -159,6 +165,7 @@ export class VPXCollisionWorld {
   solveGates(ball,game){
     const contacts=ball.contacts||(ball.contacts=new Set());
     for(const gate of this.gates){
+      if((ball.y??ball.r)-ball.r>gate.top+.001)continue;
       const a=gate.points[0],b=gate.points[1];
       const [x,z]=closest(ball.x,ball.z,a[0],a[1],b[0],b[1]);
       const inRange=dist2(ball.x-x,ball.z-z)<(ball.r+.0015)**2;
@@ -193,6 +200,7 @@ export class VPXCollisionWorld {
   }
   solveBumpers(ball,game){
     for(const c of this.data.circles){
+      if((ball.y??ball.r)-ball.r>(c.top??.05)+.002)continue;
       if(Math.abs(ball.x-c.x)>ball.r+c.radius||Math.abs(ball.z-c.z)>ball.r+c.radius)continue;
       const dx=ball.x-c.x,dz=ball.z-c.z;
       const rr=c.radius+ball.r;
@@ -208,6 +216,7 @@ export class VPXCollisionWorld {
   }
   solveFlippers(ball,game){
     for(const f of this.flippers){
+      if((ball.y??ball.r)-ball.r>.027)continue;
       const tipx=f.x+Math.sin(f.angle)*f.length;
       const tipz=f.z-Math.cos(f.angle)*f.length;
       const [px,pz,t]=closest(ball.x,ball.z,f.x,f.z,tipx,tipz);
@@ -231,6 +240,12 @@ export class VPXCollisionWorld {
         // ball; clamp to prevent numerical explosions at the flipper tip.
         const gained=clamp(surfaceNormal-relative*.28,0,1.8);
         ball.vx+=nx*gained;ball.vz+=nz*gained;
+        if(gained>.24&&ball.y<ball.r+.025){
+          // A moving bat imparts vertical energy, allowing a real ballistic
+          // trajectory to reach elevated ramps. A held bat never launches up.
+          ball.vy=Math.max(ball.vy||0,Math.min(1.05,.30+gained*.42));
+          ball.onRamp=null;
+        }
         const hitKey="flipper"+side+ball.id;
         if(game.elapsed-(game.timeSinceHit.get(hitKey)??-999)>.09){
           game.timeSinceHit.set(hitKey,game.elapsed);
@@ -242,21 +257,26 @@ export class VPXCollisionWorld {
   solveBallPairs(balls){
     for(let i=0;i<balls.length;i++)for(let j=i+1;j<balls.length;j++){
       const a=balls[i],b=balls[j];
-      const dx=b.x-a.x,dz=b.z-a.z,rr=a.r+b.r,d=Math.hypot(dx,dz);
+      const dx=b.x-a.x,dy=(b.y??b.r)-(a.y??a.r),dz=b.z-a.z;
+      const rr=a.r+b.r,d=Math.hypot(dx,dy,dz);
       if(d>=rr||d<1e-9)continue;
-      const nx=dx/d,nz=dz/d,penetration=(rr-d)/2+.00001;
-      a.x-=nx*penetration;a.z-=nz*penetration;
-      b.x+=nx*penetration;b.z+=nz*penetration;
-      const vx=b.vx-a.vx,vz=b.vz-a.vz,relative=vx*nx+vz*nz;
+      const nx=dx/d,ny=dy/d,nz=dz/d,penetration=(rr-d)/2+.00001;
+      a.x-=nx*penetration;a.y-=ny*penetration;a.z-=nz*penetration;
+      b.x+=nx*penetration;b.y+=ny*penetration;b.z+=nz*penetration;
+      const vx=b.vx-a.vx,vy=(b.vy||0)-(a.vy||0),vz=b.vz-a.vz;
+      const relative=vx*nx+vy*ny+vz*nz;
       if(relative>=0)continue;
       const impulse=-relative*.91;
-      a.vx-=nx*impulse;a.vz-=nz*impulse;
-      b.vx+=nx*impulse;b.vz+=nz*impulse;
+      a.vx-=nx*impulse;a.vy-=ny*impulse;a.vz-=nz*impulse;
+      b.vx+=nx*impulse;b.vy+=ny*impulse;b.vz+=nz*impulse;
     }
   }
   checkTriggers(ball,game){
     const contacts=ball.contacts||(ball.contacts=new Set());
     for(const trigger of this.data.triggers){
+      // Floor-level switches must not fire from a ball passing on an upper
+      // rail. Ramp-exit triggers are left active on the elevated track.
+      if((ball.y??ball.r)-ball.r>.025&&trigger.name!=="Trigger030")continue;
       const dx=ball.x-trigger.x,dz=ball.z-trigger.z;
       const inside=dist2(dx,dz)<Math.pow(trigger.radius+ball.r*.25,2);
       const key="trigger:"+trigger.name;
@@ -299,6 +319,7 @@ export class VPXCollisionWorld {
     }
   }
   inDrainMouth(ball){
+    if((ball.y??ball.r)-ball.r>.017)return false;
     const m=this.drainMouth;
     return !!m&&m.left<m.right&&ball.z>=m.z &&
       ball.x>=m.left&&ball.x<=m.right&&ball.vz>.025;
@@ -311,7 +332,7 @@ export class VPXCollisionWorld {
     game.send("falling",{ball:ball.id});
   }
   checkKickers(ball,game){
-    if(ball.portalUntil>game.elapsed)return false;
+    if(ball.portalUntil>game.elapsed||(ball.y??ball.r)-ball.r>.026)return false;
     for(const kicker of this.data.kickers){
       if(Math.hypot(ball.x-kicker.x,ball.z-kicker.z)>kicker.radius*.80)continue;
       const n=kicker.name;
@@ -340,6 +361,8 @@ export class VPXCollisionWorld {
     // Accumulate floor gravity and friction in actual GLB meters.
     for(const ball of game.activeBalls){
       ball.age+=dt;
+      if(!Number.isFinite(ball.y))ball.y=ball.r;
+      if(!Number.isFinite(ball.vy))ball.vy=0;
       if(ball.sinking){
         ball.sinking+=dt;
         // The physical drain is beneath the playfield: once below the
@@ -350,6 +373,7 @@ export class VPXCollisionWorld {
           ball.z+=(this.drain.z-ball.z)*k;
         }
         ball.sinkDepth=.045*clamp(ball.sinking/.32,0,1);
+        ball.y=Math.max(-.04,ball.r-ball.sinkDepth);
         if(ball.sinking>=.32)dead.push(ball);
         continue;
       }
@@ -377,6 +401,18 @@ export class VPXCollisionWorld {
           ball.searchRetries=(ball.searchRetries||0)+1;
           ball.stillSeconds=0;
           game.send("ballSearch",{ball:ball.id,attempt:ball.searchRetries});
+          if(ball.searchRetries>=3){
+            // Some VPX pockets have moving actuators not represented by
+            // static GLB walls. After multiple futile solenoid attempts,
+            // the emergency ball-search feeder returns the same live ball
+            // to a safe open spot; it does not award points or an extra ball.
+            ball.x=.266;ball.z=.68;ball.y=ball.r;
+            ball.vx=.10;ball.vz=-1.06;ball.vy=.24;
+            ball.onRamp=null;ball.searchRetries=0;
+            ball.searchAt=game.elapsed;
+            ball.searchX=ball.x;ball.searchZ=ball.z;
+            game.send("ballSearchRelease",{ball:ball.id});
+          }
         }
       }
       if(ball.kickAt&&game.elapsed>=ball.kickAt){
@@ -389,10 +425,14 @@ export class VPXCollisionWorld {
         ball.kickAt=0;ball.kickSide=null;
       }
       ball.vz+=.72*dt;
-      ball.vx*=Math.exp(-.32*dt);
-      ball.vz*=Math.exp(-.32*dt);
+      const horizontalDamping=ball.onRamp?.48:ball.roll?.32:.10;
+      ball.vx*=Math.exp(-horizontalDamping*dt);
+      ball.vz*=Math.exp(-horizontalDamping*dt);
+      const previousY=ball.y;
+      this.heightField.advanceVertical(ball,dt);
       ball.x+=ball.vx*dt;
       ball.z+=ball.vz*dt;
+      this.heightField.update(ball,previousY,game,dt);
       // Resolve the one-way exit *before* projecting out of Wall317 or a
       // flipper tip. Otherwise an already-draining ball receives an upward
       // collision impulse and can never cross this plane.
