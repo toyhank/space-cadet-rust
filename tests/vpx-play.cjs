@@ -156,6 +156,33 @@ async function main(){
       "Three.js ball must use physics Y instead of a constant height");
     const raisedShot=await call("Page.captureScreenshot",{format:"png"});
     fs.writeFileSync(path.join(out,"vpx-elevated-ramp.png"),Buffer.from(raisedShot.data,"base64"));
+    const leftKicker=await evalJs(`(()=>{
+      const view=window.__vpxViewer.game,g=view.game;
+      g.activeBalls=[];g.plungerLoaded=false;g.elapsed=10;g.saverUntil=-100;
+      const left=g.physics.data.triggers.find(t=>t.name==='LeftKickerRest');
+      const ball=g.spawnBall(left.x,left.z,0,0);
+      let minZ=2,maxY=0,landed=false,fired=false;
+      g.consumeEvents();
+      for(let i=0;i<420;i++){
+        g.tick(1/180);
+        for(const ev of g.consumeEvents()){
+          if(ev.type==='kickbackFire'&&ev.side==='left')fired=true;
+          if(ev.type==='rampLand'&&ev.name==='Ramp009')landed=true;
+        }
+        if(g.activeBalls.includes(ball)){
+          minZ=Math.min(minZ,ball.z);
+          maxY=Math.max(maxY,ball.y);
+        }
+      }
+      view.syncBalls();
+      return {minZ,maxY,landed,fired};
+    })()`);
+    assert.equal(leftKicker.fired,true);
+    assert.ok(leftKicker.minZ<.50,'Chrome VPX left kicker must throw ball UPFIELD');
+    assert.ok(leftKicker.maxY>.065,'Chrome ball must clear the low Bumper7');
+    assert.equal(leftKicker.landed,true,'Chrome ball must enter VPX upper ramp');
+    const kickerShot=await call("Page.captureScreenshot",{format:"png"});
+    fs.writeFileSync(path.join(out,"vpx-left-kicker.png"),Buffer.from(kickerShot.data,"base64"));
     const drainCheck=await evalJs(`(()=>{
       const view=window.__vpxViewer.game,g=view.game,m=g.physics.drainMouth;
       g.activeBalls.length=0;g.plungerLoaded=false;g.saverUntil=-100;

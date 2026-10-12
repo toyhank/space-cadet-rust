@@ -131,7 +131,7 @@ export class VPXCollisionWorld {
   solveEdges(ball,game){
     const cell=gridKey(Math.floor(ball.x/CELL),Math.floor(ball.z/CELL));
     const found=this.cells.get(cell)||[];
-    const touched=new Set();
+    const touched=new Set(),poweredSlings=new Map();
     let count=0;
     // Two passes handle acute vertices without permanent overlap.
     for(let pass=0;pass<2;pass++){
@@ -155,10 +155,27 @@ export class VPXCollisionWorld {
           touched.add(name);
           this.stats.wallHits++;
           if(source.type==="HitTarget")game.hit("target",name,ball);
-          else if(source.slingshot)game.hit("sling",name,ball);
-          else if(source.type==="Gate")game.hit("gate",name,ball);
+          else if(source.slingshot){
+            // These named VPX walls are ACTUATED solenoid slingshots,
+            // not inert passive rubber. Previously they merely scored and
+            // played audio: the ball could never be kicked up the table.
+            const key="slingcoil:"+ball.id+":"+name;
+            if(game.elapsed-(game.timeSinceHit.get(key)??-999)>.18){
+              poweredSlings.set(name,{upper:/2$/.test(name),
+                side:/^left/i.test(name)?1:-1});
+              game.timeSinceHit.set(key,game.elapsed);
+              game.hit("sling",name,ball);
+              game.send("slingFire",{name,ball:ball.id});
+            }
+          }else if(source.type==="Gate")game.hit("gate",name,ball);
         }
       }
+    }
+    // Apply solenoid energy AFTER all projected edge corrections. Otherwise
+    // a neighboring edge in pass #2 can cancel the newly added velocity.
+    for(const {upper,side} of poweredSlings.values()){
+      ball.vz=Math.min(ball.vz,upper?-1.15:-1.58);
+      ball.vx=clamp(ball.vx+side*(upper?.22:.38),-2.4,2.4);
     }
     return count;
   }
@@ -205,12 +222,23 @@ export class VPXCollisionWorld {
       const dx=ball.x-c.x,dz=ball.z-c.z;
       const rr=c.radius+ball.r;
       if(dist2(dx,dz)>=rr*rr)continue;
-      // Bumper kick is along outward contact normal, never from global axes.
-      // Force 15 in VPX maps to ~0.4 m/s horizontal impulse at this scale.
-      if(this.resolve(ball,c.x,c.z,c.radius,c.restitution||.65,
-          clamp(c.force||.22,.1,.45))){
-        this.stats.bumperHits++;
-        game.hit("bumper",c.name,ball);
+      // Bounce on contact, but emit ONE solenoid kick per approach, not
+      // every physics substep while the ball overlaps the rubber.
+      // Continuous impulses previously made the small left bumpers behave
+      // like solid rocket engines and defeated the left kicker.
+      const distance=Math.hypot(dx,dz)||1;
+      const normalX=dx/distance,normalZ=dz/distance;
+      const approach=ball.vx*normalX+ball.vz*normalZ;
+      if(this.resolve(ball,c.x,c.z,c.radius,c.restitution||.65,0)){
+        if(approach<-.03 &&
+           game.elapsed-(game.timeSinceHit.get("coil:"+ball.id+":"+c.name)??-999)>.09){
+          const impulse=clamp(c.force||.12,.055,.23);
+          ball.vx+=normalX*impulse;
+          ball.vz+=normalZ*impulse;
+          game.timeSinceHit.set("coil:"+ball.id+":"+c.name,game.elapsed);
+          this.stats.bumperHits++;
+          game.hit("bumper",c.name,ball);
+        }
       }
     }
   }
@@ -235,15 +263,17 @@ export class VPXCollisionWorld {
       const relative=(ball.vx-surfaceVX)*nx+(ball.vz-surfaceVZ)*nz;
       const bounced=this.resolve(ball,px,pz,radius,Math.min(1,f.restitution||.85));
       if(!bounced)continue;
-      if(game.flippers[side]&&!game.tilted){
-        // The forward face of the bat transfers angular velocity to the
-        // ball; clamp to prevent numerical explosions at the flipper tip.
-        const gained=clamp(surfaceNormal-relative*.28,0,1.8);
+      if(game.flippers[side]&&!game.tilted &&
+         Math.abs(f.omega)>.6&&surfaceNormal>.03){
+        // Only the MOVING front face transfers coil energy. A stationary
+        // held flipper must behave as a rubber wall, not repeatedly add
+        // "free" impulses while the ball is trapped against it.
+        const gained=clamp(surfaceNormal-Math.min(0,relative)*.22,0,1.65);
         ball.vx+=nx*gained;ball.vz+=nz*gained;
-        if(gained>.24&&ball.y<ball.r+.025){
-          // A moving bat imparts vertical energy, allowing a real ballistic
-          // trajectory to reach elevated ramps. A held bat never launches up.
-          ball.vy=Math.max(ball.vy||0,Math.min(1.05,.30+gained*.42));
+        if(gained>.32&&ball.y<ball.r+.025){
+          // Small transient lift instead of the old unrealistic high arc
+          // applied to every held-flipper contact.
+          ball.vy=Math.max(ball.vy||0,Math.min(.40,.11+gained*.17));
           ball.onRamp=null;
         }
         const hitKey="flipper"+side+ball.id;
@@ -419,13 +449,20 @@ export class VPXCollisionWorld {
         // Match the original JP VBS: *KickerRest_Hit schedules
         // left/right impulse plunger AutoFire after 1500 ms.
         ball.vx=0;
-        ball.vz=-1.8;
+        // The left kickback runs up a narrow lane whose VPX Bumper7 occupies
+        // the projected floor. In 3D the firing mechanism must pop the
+        // ball OVER its low bumper and guide; otherwise it rebounds at
+        // z≈.668 forever. The right lane is open and needs no comparable lift.
+        const left=ball.kickSide==="left";
+        ball.vz=left?-2.05:-1.8;
+        ball.vy=Math.max(ball.vy||0,left?.84:.12);
+        ball.onRamp=null;
         ball.kickCooldown=game.elapsed+2.3;
         game.send("kickbackFire",{side:ball.kickSide,ball:ball.id});
         ball.kickAt=0;ball.kickSide=null;
       }
-      ball.vz+=.72*dt;
-      const horizontalDamping=ball.onRamp?.48:ball.roll?.32:.10;
+      ball.vz+=.96*dt;
+      const horizontalDamping=ball.onRamp?.24:ball.roll?.19:.07;
       ball.vx*=Math.exp(-horizontalDamping*dt);
       ball.vz*=Math.exp(-horizontalDamping*dt);
       const previousY=ball.y;

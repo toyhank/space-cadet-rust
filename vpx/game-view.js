@@ -405,7 +405,7 @@ export class VPXGameView {
       "missionStart","missionStage","missionComplete","missionAbort","extraBall",
       "rank","skillShot","gateOpen","gateBlock","spinner","ballLocked",
       "autoPlunge","multiball","gameOver","save","ballSearch",
-      "rampLand","rampRail","rampExit","ballBounce"].includes(event.type))
+      "rampLand","rampRail","rampExit","ballBounce","slingFire"].includes(event.type))
       this.playSound(event.type);
     if(event.type==="message"){
       $("game-message").textContent=event.text;

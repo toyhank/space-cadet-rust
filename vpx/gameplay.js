@@ -227,7 +227,7 @@ export class CadetGame{
       this.progressMission("bumper",name);
       this.send("bumper",{name});
     }else if(kind==="sling"){
-      this.addPoints(150);
+      this.addPoints(500);
       this.send("sling",{name});
     }else if(kind==="target"){
       const num=Number(name?.match(/\d+$/)?.[0]);
