@@ -1,5 +1,26 @@
 # VPX 网页版本（真实 VPX 碰撞几何 + 游戏规则）
 
+## 2026-10-13：VPX 式最早碰撞时间调度 + 三维坡道三角面求解（阶段 4）
+
+**范围：** 本阶段在 `?vpxccd=1` 实验模式接入 `vpx/contact-scheduler.js`，参照 VPX 官方 `PhysicsEngine::UpdatePhysics` 的“搜索全局最早接触 → 让全部活动球推进到该时刻 → 求解冲量 → 继续剩余时间”主循环。每个固定物理步最多 24 次接触事件；同一瞬间去重，物体经过真实运动时间后允许再次碰撞，不再把某一堵墙整个步长禁用。优先搜寻：
+
+- 官方 C++/WASM 静态墙 `LineSeg::HitTestBasic`（带扫掠空间网格查询）和挡板侧面/尖端 CCD + 官方 C++/WASM 冲量/电机。
+- 两球之间基于**完整三维球心/相对速度**的二次方程 TOI（不再只能在积分结束后发现重叠）。
+- 原版 `HitTriangle::HitTest` 的**三角面法线、单面碰撞、球的接触点和重心坐标内部测试**。已生成由 VPX Ramp 原始 drag points、width、height_bottom / height_top 形成的真实 3D 倾斜三角带；垂直运动考虑重力的抛物线根计算（比原版常速逐次线性根更适合当前独立竖直求解器）。
+- 坡道边缘的垂直护栏：沿左右边界计算扫掠时刻，再施加横向反弹；始终只对已在对应坡道上的球生效，因此下层球可从高架桥下穿过，上层可安全离轨。
+- 地面接触的解析 TOI；计算结束后再调用现有的 Gate / Bumper / Kicker / 任务事件层，避免破坏旧版计分及机械简化规则。
+
+**实现性质：** VPX 官方物理的**调度结构及三角形接触数学的 JavaScript 适配**，不是将完整 VPX `PhysicsEngine.cpp`、`HitTriangle`、kd-tree 与全部接触约束直接编译到 WASM。两个 C++/WASM 内核继续负责静态墙和挡板；坡道三角网格由 VPX 已导出的 drag points 重建，**不是原始 VPX 的全部碰撞三角片、侧壁、橡胶与隐形导轨**。原版精确计时还依赖固定 1 ms 积分、脚本事件顺序、摩擦/自旋、碰撞材质和随机散射；此处仍有差距。由于参考了 GPLv3+ VPX 原版 `PhysicsEngine.cpp` 与 `collideex.cpp`，本阶段 `vpx/contact-scheduler.js`、`vpx/height-field.js` 按 GPL-3.0-or-later 标记。
+
+**专项回归：** `tests/vpx-contact-scheduler.mjs` 在同一时步实现连续 3 次薄墙命中、8m/s 横向球撞高架护栏、球球高速扫掠、两层重叠三角带着陆、飞过桥下、偏离坡道落地、静态 JS 回退；`tests/vpx-play.cjs` 在真实 Chrome 的 `?vpxccd=1` 模式确认原始 JP v4.3 顶层坡道通过按时间排列的三角面接触而着陆。两场真实桌台三球长模拟分别约 35.4s / 78.7s 正常 Game Over，调度事件数 42 / 334，迭代上限触发 0 次；原有任务、锁球、左侧 Kicker、Chrome 挡板及音频测试保持通过。
+
+### 仍未完成
+
+官方 VPX 的全部静态/动态空间树、圆形与可动机械的 CCD、完整三角及侧壁导出、同一个帧内所有脚本回调时序、持续接触摩擦和上下层动态物体全量积分仍未移植。目前交互链同时包含 C++/WASM 接触与 JS 简化回退，属于可试玩的 VPX 衍生实验引擎；**不能声称整套碰撞调度和三维坡道已达到原版逐轨迹一致**。
+
+---
+
+
 ## 2026-10-13：挡板锥形侧面 / 旋转尖端 CCD（阶段 3）
 
 新增 GPLv3+ C++ 源码 `vpx/native/vpx_flipper_ccd.cpp`，参考官方 `HitFlipper::HitTestFlipperFace` 与 `HitTestFlipperEnd` 的锥形挡板法线、线段、两端圆帽和旋转表面速度公式，独立编译成 4,193 字节的 WebAssembly。原版使用 Modified False Position 求根；为确保高速旋转挡板也能找到两个采样时刻之间的碰撞，本模块使用 20 段时间扫描及二分细化，因此是 VPX **几何/算法派生近似实现**，不宣称逐帧完全一致。

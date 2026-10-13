@@ -189,6 +189,7 @@ async function main(){
     const rampVisual=await evalJs(`(()=>{
       const view=window.__vpxViewer.game,g=view.game;
       g.activeBalls.length=0;g.plungerLoaded=false;
+      g.physics.stats.rampTOI=0;
       const ball=g.spawnBall(.12,.415,0,0);
       ball.y=.104;ball.vy=-.16;
       let landed=false;
@@ -200,11 +201,19 @@ async function main(){
       view.syncBalls();
       const mesh=view.ballModels.get(ball.id)?.mesh;
       return {landed,y:ball.y,renderY:mesh?.position.y,
-        aboveFloor:ball.y-ball.r,deck:ball.onRamp};
+        aboveFloor:ball.y-ball.r,deck:ball.onRamp,
+        rampTOI:g.physics.stats.rampTOI||0,
+        scheduleEvents:g.physics.stats.scheduleEvents||0};
     })()`);
     assert.equal(rampVisual.landed,true,"Real JP v4.3 elevated ramp must support a falling ball");
     assert.equal(rampVisual.deck,"Ramp009");
     assert.ok(rampVisual.y>.07);
+    if(nativeExpected){
+      assert.ok(rampVisual.rampTOI>=1,
+        "Real Chrome must land on 3D VPX triangle via chronological CCD");
+      assert.ok(rampVisual.scheduleEvents>=1,
+        "Real Chrome must use new minimum-impact-time scheduler");
+    }
     assert.ok(Math.abs(rampVisual.renderY-rampVisual.y)<.00001,
       "Three.js ball must use physics Y instead of a constant height");
     const raisedShot=await call("Page.captureScreenshot",{format:"png"});

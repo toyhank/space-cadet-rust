@@ -36,7 +36,11 @@ obligations for the combined distribution; anyone reusing or publishing
 this experiment should assess those obligations and provide complete
 corresponding source. This project ships this source file and full GPL
 terms alongside the WASM binary. No VPX game art, table script or ROM
-asset is included in this directory.
+asset is included in this directory. GPL-derived JavaScript adaptations
+`vpx/contact-scheduler.js` (from upstream PhysicsEngine.cpp control flow)
+and `vpx/height-field.js` (HitTriangle from collideex.cpp) also bear
+GPL-3.0-or-later notices; their rasterized drag-point ramp triangles are
+an approximation, not the actual full upstream collision mesh.
 
 ## Rebuild the precompiled WASM
 

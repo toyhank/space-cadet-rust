@@ -194,7 +194,7 @@ export class VPXGameView {
     button.disabled=!this.game.physics;
     const stats=$("game-ccd-stats");
     if(stats)stats.textContent=enabled?
-      "墙 "+(this.game.physics.stats.nativeHits||0)+" · 挡板CCD "+(this.game.physics.stats.nativeFlipperCCD||0):
+      "墙 "+(this.game.physics.stats.nativeHits||0)+" · 挡板 "+(this.game.physics.stats.nativeFlipperCCD||0)+" · 坡道 "+(this.game.physics.stats.rampTOI||0)+" · 队列 "+(this.game.physics.stats.scheduleEvents||0):
       "C++ 墙体与挡板实验 · 其他物理仍用 JS";
   }
   async toggleNativeCCD(){
@@ -519,7 +519,7 @@ export class VPXGameView {
     const s=this.game.status;
     $("game-score").textContent=String(s.score).padStart(8,"0");
     if(this.game.physics?.nativeCCD)$("game-ccd-stats").textContent=
-      "墙 "+(this.game.physics.stats.nativeHits||0)+" · 挡板CCD "+(this.game.physics.stats.nativeFlipperCCD||0);
+      "墙 "+(this.game.physics.stats.nativeHits||0)+" · 挡板 "+(this.game.physics.stats.nativeFlipperCCD||0)+" · 坡道 "+(this.game.physics.stats.rampTOI||0)+" · 队列 "+(this.game.physics.stats.scheduleEvents||0);
     $("game-mode").textContent=s.over?"GAME OVER":s.paused?"PAUSED":s.tilted?"TILT":s.balls>1?"MULTIBALL":s.plungerLoaded?"READY TO LAUNCH":"BALL IN PLAY";
     $("game-ball").textContent=s.ball+" / 3";
     $("game-rank").textContent=s.rank+" · "+s.progress+"/18";

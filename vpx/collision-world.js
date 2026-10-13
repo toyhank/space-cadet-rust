@@ -1,4 +1,5 @@
 import {LayeredRampWorld} from "./height-field.js";
+import {VPXContactScheduler} from "./contact-scheduler.js";
 /**
  * VPX 3D layered contact solver (projected walls + elevated ramp surfaces).
  *
@@ -32,6 +33,7 @@ export class VPXCollisionWorld {
     this.data=data;this.edges=[];this.cells=new Map();
     this.nativeCCD=options.nativeCCD||null;
     this.heightField=new LayeredRampWorld(data.ramps||[]);
+    this.scheduler=new VPXContactScheduler(this);
     // One-way hinges are solved dynamically, not inserted as rigid walls.
     // A stationary 2D line at their location would trap the launch ball.
     this.gates=(data.segments||[]).filter(o=>o.type==="Gate"&&!o.twoWay);
@@ -196,6 +198,7 @@ export class VPXCollisionWorld {
     for(let pass=0;pass<2;pass++){
       for(const edge of found){
         const source=edge.source,name=source.name;
+        if(source.type==="Wall"&&ball._scheduledWallNames?.has(name))continue;
         // The 2D projected wall only has contact when its vertical span
         // intersects the actual 3D ball. Elevated balls can clear it.
         if((ball.y??ball.r)-ball.r>source.top+.001||
@@ -512,6 +515,8 @@ export class VPXCollisionWorld {
     this.updateFlippers(dt,game.flippers);
     this.updateGates(dt,game.elapsed);
     const dead=[];
+    const chronologic=!!(this.nativeCCD?.flipperTOI&&this.nativeCCD?.lineTime);
+    const scheduledBalls=[];
     // Accumulate floor gravity and friction in actual GLB meters.
     for(const ball of game.activeBalls){
       ball.age+=dt;
@@ -589,6 +594,10 @@ export class VPXCollisionWorld {
       const horizontalDamping=ball.onRamp?.24:ball.roll?.19:.07;
       ball.vx*=Math.exp(-horizontalDamping*dt);
       ball.vz*=Math.exp(-horizontalDamping*dt);
+      if(chronologic){
+        scheduledBalls.push(ball);
+        continue; // all in-play balls must advance together to the next TOI
+      }
       const previousY=ball.y,previousX=ball.x,previousZ=ball.z;
       this.heightField.advanceVertical(ball,dt);
       ball.x+=ball.vx*dt;
@@ -618,6 +627,24 @@ export class VPXCollisionWorld {
       this.checkTriggers(ball,game);
       this.checkSpinners(ball,game);
     }
+    if(chronologic&&scheduledBalls.length){
+      this.scheduler.step(scheduledBalls,dt,game);
+      // Scores, dynamic gates, bumpers and kickers are still handled by
+      // legacy VPX-derived event logic, AFTER chronological rigid contacts.
+      for(const ball of scheduledBalls){
+        if(!game.activeBalls.includes(ball)||ball.sinking)continue;
+        if(this.inDrainMouth(ball)){this.beginSink(ball,game);continue;}
+        this.solveEdges(ball,game);
+        this.solveGates(ball,game);
+        this.solveBumpers(ball,game);
+        this.solveFlippers(ball,game);
+        if(this.inDrainMouth(ball)){this.beginSink(ball,game);continue;}
+        this.checkTriggers(ball,game);
+        this.checkSpinners(ball,game);
+      }
+    }
+    // Discrete contact remains as fallback for initial overlaps and for
+    // the legacy JS path; the CCD path excludes already separated pairs.
     this.solveBallPairs(game.activeBalls.filter(b=>!b.sinking&&!b.kickAt));
     for(const ball of game.activeBalls){
       if(ball.sinking)continue;
