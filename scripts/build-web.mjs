@@ -51,7 +51,6 @@ if(includePrivate){
     await copy('assets/vpx-local/'+file,'assets/vpx-local/'+file);
   }
 }else{
-  await fs.mkdir(path.join(out,'assets/vpx-local'),{recursive:true});
   // Publishing an extracted VPX/GLB must be a separate deliberate decision
   // by the asset copyright holder. Public builds require local user import.
 }
