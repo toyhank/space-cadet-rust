@@ -16,12 +16,12 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: '22'
           cache: npm
@@ -31,27 +31,23 @@ jobs:
         run: npm run test:ci
       - name: Build public web edition
         run: npm run build
-      - name: Verify copyrighted local VPX assets are absent
-        shell: bash
-        run: |
-          test -f dist/index.html
-          test -f dist/node_modules/@francisdb/vpin-wasm/vpin_bg.wasm
-          test ! -f dist/assets/vpx-local/space-cadet.glb
-          test ! -f dist/assets/vpx-local/space-cadet.physics.json
-          test ! -f dist/assets/vpx-local/source-script.vbs
+      - name: Audit public build for table assets
+        run: node scripts/verify-public-build.mjs dist
+      - name: Verify required WASM artifact
+        run: test -f dist/node_modules/@francisdb/vpin-wasm/vpin_bg.wasm
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6.0.0
       - name: Upload web artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: dist/
 
   deploy:
     environment:
       name: github-pages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5.0.1
