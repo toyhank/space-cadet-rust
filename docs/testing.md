@@ -20,8 +20,10 @@ Use the exact scripts declared in package.json; their test lists may change as t
 1. Install the supported Node.js LTS release and npm.
 2. Run npm ci.
 3. Run npm run test:ci and npm run build.
+4. Run node scripts/verify-public-build.mjs dist to scan the full public build tree for VPX/GLB/VBS files, known table DAT names and vpx-local directories.
+5. Confirm dist/node_modules/@francisdb/vpin-wasm/vpin_bg.wasm exists; Pages requires this converter runtime.
 
-The GitHub Actions workflow runs the clean-checkout checks. Follow the workflow result linked from the repository Actions page; do not infer success from a local-only test.
+The GitHub Pages workflow runs test:ci, build, the recursive public-build audit and the converter WASM existence check before upload. It does not run the optional browser/table suites or cargo test. Follow the Actions result for a commit and do not infer those optional checks passed.
 
 ## Browser and table integration
 
