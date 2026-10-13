@@ -6,7 +6,7 @@ import {CadetGame} from "../vpx/gameplay.js";
 
 const base64=fs.readFileSync("vpx/native/vpx_ccd.wasm.base64","utf8").replace(/\s/g,"");
 const wasm=Buffer.from(base64,"base64");
-assert.equal(wasm.length,1788,"committed WASM must match the compiled C++ prototype");
+assert.equal(wasm.length,3203,"committed WASM must match the compiled C++ prototype");
 assert.ok(WebAssembly.validate(wasm));
 const {instance}=await WebAssembly.instantiate(wasm);
 const ccd=new VPXNativeCCD(instance);

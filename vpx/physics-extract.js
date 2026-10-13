@@ -73,6 +73,12 @@ export function extractVPXPhysics(files){
         length:number(o.flipper_radius_max,115)*S,
         start:number(o.start_angle,0)*Math.PI/180,
         end:number(o.end_angle,0)*Math.PI/180,
+        // VPX FlipperMoverObject motor/mass values from original table:
+        strength:number(o.strength,3600),mass:number(o.mass,1),
+        returnRatio:number(o.return,.04),rampUp:number(o.ramp_up,1),
+        torqueDamping:number(o.torque_damping,1),
+        torqueDampingAngle:number(o.torque_damping_angle,0)*Math.PI/180,
+        falloff:number(o.elasticity_falloff,.5),
         ...defaults(o)});
     }else if(type==="Kicker"&&o.is_enabled){
       const [x,z]=point(o.center);

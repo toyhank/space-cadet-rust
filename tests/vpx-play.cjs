@@ -150,9 +150,20 @@ async function main(){
     assert.equal(await evalJs("window.__vpxViewer.game.game.status.missionProgress"),1);
     assert.ok(await evalJs("parseFloat(document.getElementById('game-mission-fill').style.width)")>0);
     await evalJs('document.dispatchEvent(new KeyboardEvent("keydown",{code:"KeyA",bubbles:true}))');
-    await pause(1300);
-    assert.equal(await evalJs("window.__vpxViewer.game.keys.left"),true);
-    console.log("FLIPPER",await evalJs("({angle:window.__vpxViewer.game.flipperGroups.left.rotation.y,active:window.__vpxViewer.game.running,last:window.__vpxViewer.game.last,now:performance.now(),renderer:window.__vpxViewer.diagnostics.meshes})"));
+    let flipperReady=false;
+    for(let i=0;i<55;i++){
+      const state=await evalJs(`(()=>{
+        const v=window.__vpxViewer.game,p=v.game.physics;
+        const f=p.flippers.find(f=>f.name==="LeftFlipper");
+        return {model:v.flipperGroups.left.rotation.y,physical:-(f.angle-f.start),
+          active:v.keys.left};
+      })()`);
+      if(state.active&&state.model>.01&&
+        Math.abs(state.model-state.physical)<.005){flipperReady=true;break;}
+      await pause(100);
+    }
+    assert.ok(flipperReady,"Chrome original flipper mesh must catch up with physics angle");
+    console.log("FLIPPER",await evalJs("(()=>{const v=window.__vpxViewer.game,p=v.game.physics,f=p.flippers.find(f=>f.name===\'LeftFlipper\');return {angle:v.flipperGroups.left.rotation.y,active:v.running,paused:v.game.paused,over:v.game.over,command:v.game.flippers.left,physical:{angle:f.angle,omega:f.omega,torque:f.nativeTorque,start:f.start,end:f.end},last:v.last,now:performance.now(),renderer:window.__vpxViewer.diagnostics.meshes};})()"));
     assert.ok(await evalJs("window.__vpxViewer.game.flipperGroups.left.rotation.y")>.01);
     await evalJs('document.dispatchEvent(new KeyboardEvent("keyup",{code:"KeyA",bubbles:true}))');
     await evalJs('document.dispatchEvent(new KeyboardEvent("keydown",{code:"KeyP",bubbles:true}))');

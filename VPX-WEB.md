@@ -1,12 +1,12 @@
 # VPX 网页版本（真实 VPX 碰撞几何 + 游戏规则）
 
-## Experimental official VPX C++ physics → WebAssembly (phase 1)
+## Experimental official VPX C++ physics → WebAssembly (phase 1–2)
 
 **Try it:** after opening the table, click **VPX C++ WASM 碰撞：关闭** in the score cabinet, or add `?vpxccd=1` to the page URL. Click again to revert instantly to the stable JS physics.
 
-This is an **experimental hybrid solver, NOT the full VPX engine**. We have adapted the official GPLv3+ Visual Pinball X routines `LineSeg::HitTestBasic` (continuous *static line wall* time of impact) and `HitBall::Collide3DWall` (wall normal impulse, restitution falloff, Coulomb friction and ball angular spin) into a dependency-free C++17 library that compiles to a 1,788-byte WebAssembly module. Physical units are converted between VPX's VPU / 10ms timestep and the web GLB meters / seconds.
+This is an **experimental hybrid solver, NOT the full VPX engine**. We have adapted the official GPLv3+ Visual Pinball X routines `LineSeg::HitTestBasic` (continuous *static line wall* time of impact) and `HitBall::Collide3DWall` (wall normal impulse, restitution falloff, Coulomb friction and ball angular spin) into a dependency-free C++17 library that now compiles to a 3,203-byte WebAssembly module. Phase 2 also ports the VPX FlipperMoverObject torque/return/stop mechanics, shape inertia, and HitFlipper normal recoil and friction impulse, while still using JS to find flipper contacts. Physical units are converted between VPX's VPU / 10ms timestep and the web GLB meters / seconds.
 
-The game now sweeps through all spatial grid cells along a ball's step and applies the C++ WASM contact response to relevant static walls. The legacy solver handles every other mechanism: **flippers, bumpers, slingshots, gates, high ramps, kicker, ball-ball, scoring, VBS events**. We exclude the one-way shooter trough and missing direction-tagged edges from this first migration because the VPX exported geometry lacks their true hit-side constraints.
+The game now sweeps through all spatial grid cells along a ball's step and applies the C++ WASM contact response to relevant static walls. The legacy solver handles other mechanisms: **flipper contact geometry, bumpers, slingshots, gates, high ramps, kicker, ball-ball, scoring, VBS events**. We exclude the one-way shooter trough and missing direction-tagged edges from this first migration because the VPX exported geometry lacks their true hit-side constraints.
 
 - Real C++ source: `vpx/native/vpx_ccd.cpp`
 - Prebuilt WASM checked in as base64: `vpx/native/vpx_ccd.wasm.base64`; `npm run build` emits the actual `dist/vpx/native/vpx_ccd.wasm`
@@ -17,7 +17,7 @@ The game now sweeps through all spatial grid cells along a ball's step and appli
 
 **License:** Preexisting MIT files keep their MIT notices, but **the copied/adapted VPX C++ and built WASM are GPL-3.0-or-later**, and distributing a combined web application may require GPL compliance for the combined work. Source and license are shipped with the module. This is not a representation that the full engine has been relicensed under MIT. Licensed table artwork/VBS remains excluded from public deployment.
 
-**Next phases for true VPX fidelity:** point and circle continuous collision, accurate one-sided wall export, flipper motor/collision dynamics, full 3D triangle/ramp CCD, contact loop/broadphase parity, physics timing and VBS event runtime. We have **not** migrated those yet.
+**Next phases for true VPX fidelity:** point and circle continuous collision, accurate one-sided wall export, **flipper swept face/end collision geometry and contact solver**, full 3D triangle/ramp CCD, contact loop/broadphase parity, physics timing and VBS event runtime. We have **not** migrated those yet.
 
 ---
 

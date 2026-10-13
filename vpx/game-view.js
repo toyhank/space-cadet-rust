@@ -15,7 +15,31 @@ export class VPXGameView {
       const point=o.getWorldPosition(new THREE.Vector3());
       coordinates.push({name:o.name,position:{x:point.x,y:point.y,z:point.z}});
     });
-    this.game=new CadetGame(extractPositions(coordinates),{physics:options.physics,nativeCCD:options.nativeCCD});
+    // Prefer the original VPX flipper motor settings embedded in the GLB
+    // extras. Older extracted physics JSON contained only geometry.
+    const physics=options.physics?.flippers?{
+      ...options.physics,
+      flippers:options.physics.flippers.map(f=>{
+        const extras=this.root.getObjectByName(f.name)?.userData||{};
+        const original=extras.vpx||extras;
+        const number=(fallback,...keys)=>{
+          for(const key of keys)if(Number.isFinite(Number(original[key])))
+            return Number(original[key]);
+          return fallback;
+        };
+        return {...f,
+          strength:f.strength??number(3600,"strength"),
+          mass:f.mass??number(1,"mass"),
+          returnRatio:f.returnRatio??number(.04,"return"),
+          rampUp:f.rampUp??number(1,"ramp_up"),
+          torqueDamping:f.torqueDamping??number(1,"torque_damping"),
+          torqueDampingAngle:f.torqueDampingAngle??
+            number(0,"torque_damping_angle")*Math.PI/180,
+          falloff:f.falloff??number(.5,"elasticity_falloff")
+        };
+      })
+    }:options.physics;
+    this.game=new CadetGame(extractPositions(coordinates),{physics,nativeCCD:options.nativeCCD});
     const physical=this.game.physics;
     // Physics diagnostics are available only in the separate inspection mode.
     if($("game-physics-info"))$("game-physics-info").textContent=physical?
@@ -170,8 +194,8 @@ export class VPXGameView {
     button.disabled=!this.game.physics;
     const stats=$("game-ccd-stats");
     if(stats)stats.textContent=enabled?
-      "实验模式：仅静态墙 CCD · 命中 "+(this.game.physics.stats.nativeHits||0):
-      "静态墙试验 · 其他物理仍用 JS";
+      "原生墙 "+(this.game.physics.stats.nativeHits||0)+" · 挡板 "+(this.game.physics.stats.nativeFlipperHits||0):
+      "C++ 墙体与挡板实验 · 其他物理仍用 JS";
   }
   async toggleNativeCCD(){
     const physics=this.game.physics;
@@ -183,7 +207,7 @@ export class VPXGameView {
       try{
         const {loadVPXNativeCCD}=await import("./vpx-native.js");
         physics.nativeCCD=await loadVPXNativeCCD();
-        this.announce("VPX C++ CCD", "STATIC WALLS ONLY · EXPERIMENTAL",2200);
+        this.announce("VPX C++ WASM", "WALL CCD + FLIPPER MOTOR · EXPERIMENTAL",2200);
       }catch(e){
         console.warn("VPX native collision module unavailable:",e);
         this.announce("VPX CCD FAILED", "USING SAFE JS PHYSICS",2200);
@@ -495,7 +519,7 @@ export class VPXGameView {
     const s=this.game.status;
     $("game-score").textContent=String(s.score).padStart(8,"0");
     if(this.game.physics?.nativeCCD)$("game-ccd-stats").textContent=
-      "实验模式：仅静态墙 CCD · 命中 "+(this.game.physics.stats.nativeHits||0);
+      "原生墙 "+(this.game.physics.stats.nativeHits||0)+" · 挡板 "+(this.game.physics.stats.nativeFlipperHits||0);
     $("game-mode").textContent=s.over?"GAME OVER":s.paused?"PAUSED":s.tilted?"TILT":s.balls>1?"MULTIBALL":s.plungerLoaded?"READY TO LAUNCH":"BALL IN PLAY";
     $("game-ball").textContent=s.ball+" / 3";
     $("game-rank").textContent=s.rank+" · "+s.progress+"/18";

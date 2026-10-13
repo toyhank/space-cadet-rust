@@ -88,7 +88,7 @@ export class VPXCollisionWorld {
     }
   }
   reset(){
-    for(const f of this.flippers){f.angle=f.start;f.omega=0;}
+    for(const f of this.flippers){f.angle=f.start;f.omega=0;f.nativeTorque=0;}
     for(const state of this.gateStates.values()){
       state.openUntil=0;state.angle=0;state.lastHit=-999;
     }
@@ -96,6 +96,11 @@ export class VPXCollisionWorld {
   }
   updateFlippers(dt,pressed){
     for(const f of this.flippers){
+      if(this.nativeCCD?.stepFlipper){
+        const side=/^left/i.test(f.name)?"left":"right";
+        this.nativeCCD.stepFlipper(f,!!pressed[side],dt);
+        continue;
+      }
       const side=/^left/i.test(f.name)?"left":"right";
       const target=pressed[side]?f.end:f.start;
       const old=f.angle,delta=target-old;
@@ -312,6 +317,24 @@ export class VPXCollisionWorld {
       const surfaceVZ=Math.sin(f.angle)*f.omega*f.length*t;
       const surfaceNormal=surfaceVX*nx+surfaceVZ*nz;
       const relative=(ball.vx-surfaceVX)*nx+(ball.vz-surfaceVZ)*nz;
+      if(this.nativeCCD?.collideFlipper){
+        // Contact SEARCH remains the JS tapered-capsule approximation;
+        // contact RESPONSE uses the actual native VPX HitFlipper impulse,
+        // recoil into angular momentum and tangent friction / ball spin.
+        const penetration=ball.r+radius-separation;
+        ball.x+=nx*(penetration+.00002);
+        ball.z+=nz*(penetration+.00002);
+        const bounced=this.nativeCCD.collideFlipper(ball,f,rx,rz,nx,nz);
+        if(bounced){
+          this.stats.nativeFlipperHits=(this.stats.nativeFlipperHits||0)+1;
+          const key="flipper"+side+ball.id;
+          if(game.elapsed-(game.timeSinceHit.get(key)??-999)>.09){
+            game.timeSinceHit.set(key,game.elapsed);
+            game.send("flipperHit",{side,ball:ball.id,native:true});
+          }
+        }
+        continue;
+      }
       const bounced=this.resolve(ball,px,pz,radius,Math.min(1,f.restitution||.85));
       if(!bounced)continue;
       if(game.flippers[side]&&!game.tilted &&
