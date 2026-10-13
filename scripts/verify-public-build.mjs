@@ -1,13 +1,16 @@
 import { readdir, stat } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 
+
 const root = resolve(process.argv[2] ?? "dist");
 const rootInfo = await stat(root).catch(() => null);
 if (!rootInfo?.isDirectory()) throw new Error("Expected build directory: " + root);
 
+
 const blockedExtensions = /\.(?:vpx|glb|vbs)$/i;
 const blockedNames = new Set(["pinball.dat", "cadet.dat", "space-cadet.physics.json", "source-script.vbs"]);
 const findings = [];
+
 
 async function scan(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -21,6 +24,7 @@ async function scan(directory) {
   }
 }
 
+
 const indexInfo = await stat(resolve(root, "index.html")).catch(() => null);
 if (!indexInfo?.isFile()) throw new Error("Public build is missing index.html");
 await scan(root);
@@ -29,5 +33,5 @@ if (findings.length) {
   for (const file of findings) console.error(" - " + file);
   process.exitCode = 1;
 } else {
-  console.log("Public build audit passed; no VPX, DAT, GLB, VBS, or vpx-local assets found.");
+  console.log("Public build audit passed; no VPX/GLB/VBS files, known table DAT names, or vpx-local tree found.");
 }
