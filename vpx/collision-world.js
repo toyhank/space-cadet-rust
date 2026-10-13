@@ -96,9 +96,11 @@ export class VPXCollisionWorld {
   }
   updateFlippers(dt,pressed){
     for(const f of this.flippers){
+      f.previousAngle=f.angle;
       if(this.nativeCCD?.stepFlipper){
         const side=/^left/i.test(f.name)?"left":"right";
         this.nativeCCD.stepFlipper(f,!!pressed[side],dt);
+        f.sweepOmega=(f.angle-f.previousAngle)/dt;
         continue;
       }
       const side=/^left/i.test(f.name)?"left":"right";
@@ -107,6 +109,7 @@ export class VPXCollisionWorld {
       const rate=pressed[side]?18:12;
       f.angle+=clamp(delta,-rate*dt,rate*dt);
       f.omega=(f.angle-old)/Math.max(dt,1e-6);
+      f.sweepOmega=f.omega;
     }
   }
   resolve(ball,px,pz,r,elasticity=.65,impulse=0,tag=""){
@@ -298,7 +301,54 @@ export class VPXCollisionWorld {
       }
     }
   }
+  /**
+   * Experimental VPX tapered face / rotating tip swept collision. Runs before
+   * the legacy endpoint overlap correction. C++ determines TOI & normal,
+   * and the already ported native impulse/motor handles physical response.
+   * We keep a one-step flag so the old JS capsule does not bounce twice.
+   */
+  resolveNativeFlipperSweep(ball,oldX,oldZ,oldY,dt,game){
+    const ccd=this.nativeCCD;
+    if(!ccd?.flipperTOI||!ccd?.collideFlipper||!Number.isFinite(dt)||
+       dt<=0||oldY-ball.r>.027)return false;
+    const ballVX=ball.vx,ballVZ=ball.vz;
+    const testBall={...ball,x:oldX,z:oldZ,y:oldY};
+    let selected=null;
+    for(const f of this.flippers){
+      if(Math.abs(oldX-f.x)>f.length+ball.r+f.baseRadius+.035&&
+         Math.abs(ball.x-f.x)>f.length+ball.r+f.baseRadius+.035)continue;
+      if(Math.abs(oldZ-f.z)>f.length+ball.r+f.baseRadius+.035&&
+         Math.abs(ball.z-f.z)>f.length+ball.r+f.baseRadius+.035)continue;
+      const h=ccd.flipperTOI.find(testBall,f,f.previousAngle??f.angle,
+        f.sweepOmega??f.omega,dt);
+      if(h&&(!selected||h.time<selected.time))selected={...h,f};
+    }
+    if(!selected)return false;
+    const {f,time,nx,nz,rx,rz}=selected;
+    const beforeX=ball.x,beforeZ=ball.z;
+    ball.x=oldX+ballVX*time+nx*.00003;
+    ball.z=oldZ+ballVZ*time+nz*.00003;
+    if(!ccd.collideFlipper(ball,f,rx,rz,nx,nz)){
+      ball.x=beforeX;ball.z=beforeZ;
+      return false;
+    }
+    const remaining=Math.max(0,dt-time);
+    ball.x+=ball.vx*remaining;ball.z+=ball.vz*remaining;
+    ball._nativeFlipperStep=game.elapsed;
+    this.stats.nativeFlipperHits=(this.stats.nativeFlipperHits||0)+1;
+    this.stats.nativeFlipperCCD=(this.stats.nativeFlipperCCD||0)+1;
+    const side=/^left/i.test(f.name)?"left":"right";
+    const key="flipper"+side+ball.id;
+    if(game.elapsed-(game.timeSinceHit.get(key)??-999)>.09){
+      game.timeSinceHit.set(key,game.elapsed);
+      game.send("flipperHit",{side,ball:ball.id,native:true,
+        contact:selected.kind,ccd:true,time});
+    }
+    return true;
+  }
   solveFlippers(ball,game){
+    if(this.nativeCCD?.flipperTOI && ball._nativeFlipperStep===game.elapsed)
+      return;
     for(const f of this.flippers){
       if((ball.y??ball.r)-ball.r>.027)continue;
       const tipx=f.x+Math.sin(f.angle)*f.length;
@@ -544,7 +594,10 @@ export class VPXCollisionWorld {
       ball.x+=ball.vx*dt;
       ball.z+=ball.vz*dt;
       this.heightField.update(ball,previousY,game,dt);
-      this.resolveNativeWallSweep(ball,previousX,previousZ,previousY,dt,game);
+      const wallHit=this.resolveNativeWallSweep(
+        ball,previousX,previousZ,previousY,dt,game);
+      if(!wallHit)
+        this.resolveNativeFlipperSweep(ball,previousX,previousZ,previousY,dt,game);
       // Resolve the one-way exit *before* projecting out of Wall317 or a
       // flipper tip. Otherwise an already-draining ball receives an upward
       // collision impulse and can never cross this plane.

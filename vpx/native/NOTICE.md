@@ -16,8 +16,15 @@ from `src/physics/physconst.h` (all marked `// license:GPLv3+` upstream).
   support friction and ball angular velocity with deterministic scatter=0.
   Version 2 also adapts VPX flipper torque ramp, end stops, return coil,
   tapered-hull shape inertia and collision recoil/friction. The flipper
-  face/contact lookup remains the original JS capsule approximation.
-  Flipper mass other than 1 is not yet modeled exactly.
+  face/contact lookup in version 3 can optionally use a second C++ WASM
+  swept-contact module adapted from `HitTestFlipperFace` and
+  `HitTestFlipperEnd`, with tapered sides, rotating tip and base circle.
+  It uses 20 time subdivisions and root bisection instead of VPX's exact
+  modified false-position search, and interpolates flipper angle linearly
+  during each step. It remains a VPX-derived approximation, not an exact
+  VPX continuous-contact implementation. If the module fails to load,
+  the JS capsule search remains available. Masses other than 1 are not yet
+  modeled exactly.
 - Full GPL terms: [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt)
 - Historical Visual Pinball license information: https://github.com/vpinball/vpinball/blob/master/LICENSE
 
@@ -48,6 +55,19 @@ clang++ --target=wasm32 -std=c++17 -O3 -fno-exceptions -fno-rtti \
   vpx/native/vpx_ccd.cpp -o vpx/native/vpx_ccd.wasm
 ```
 
+The companion `vpx_flipper_ccd.cpp` is built with the same Clang 17
+toolchain and the following command:
+
+```bash
+clang++ --target=wasm32 -O3 -std=c++17 -fno-exceptions -fno-rtti   -nostdlib -Wl,--no-entry -Wl,--export=vpx_flipper_toi   -Wl,--export=vpx_flipper_toi_out   -Wl,--export=vpx_flipper_toi_version -Wl,--export-memory   -Wl,--initial-memory=131072   vpx/native/vpx_flipper_ccd.cpp -o vpx/native/vpx_flipper_ccd.wasm
+```
+
+The compiled flipper module is 4,193 bytes. Its committed
+`vpx_flipper_ccd.wasm.deflate.base64` representation is a zlib-deflated,
+base64-encoded WASM binary. `npm run build` decodes the first WASM and
+inflates the second into the deployed web directory. The source and the
+full GPL terms are bundled with the public build.
+
 `npm run build` decodes the tested precompiled base64 to
 `dist/vpx/native/vpx_ccd.wasm`. Run `node tests/vpx-native-ccd.mjs` to
 validate its exported ABI and known C++ native output fixtures.
@@ -58,7 +78,8 @@ This is **NOT** the native VPX physics engine. It contains rigid static
 line wall time-of-impact, normal restitution with falloff, Coulomb
 friction/spin, plus experimental flipper motor dynamics and ball impulse
 response. It explicitly **does not include** VPX dynamic
-broadphase/kd-tree, swept flipper face/end CCD, triangle/ramp collision,
+broadphase/kd-tree, the exact original false-position hit-time search,
+full moving ball/flipper multi-contact scheduling, triangle/ramp collision,
 ball-ball CCD, bumper/gate/slingshot mechanics, or the original VBScript
 runtime. The web game currently runs the module only in optional hybrid
 `?vpxccd=1`/in-game opt-in mode and preserves its existing JS solver for

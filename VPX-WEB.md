@@ -1,5 +1,17 @@
 # VPX 网页版本（真实 VPX 碰撞几何 + 游戏规则）
 
+## 2026-10-13：挡板锥形侧面 / 旋转尖端 CCD（阶段 3）
+
+新增 GPLv3+ C++ 源码 `vpx/native/vpx_flipper_ccd.cpp`，参考官方 `HitFlipper::HitTestFlipperFace` 与 `HitTestFlipperEnd` 的锥形挡板法线、线段、两端圆帽和旋转表面速度公式，独立编译成 4,193 字节的 WebAssembly。原版使用 Modified False Position 求根；为确保高速旋转挡板也能找到两个采样时刻之间的碰撞，本模块使用 20 段时间扫描及二分细化，因此是 VPX **几何/算法派生近似实现**，不宣称逐帧完全一致。
+
+启用 `?vpxccd=1` 后，静态墙 CCD 仍由先前的 C++ 模块负责。新的模块优先根据物理步起点 `x/z`、球速、转动前挡板角度和该步实际角度变化算出**最早命中的侧面/端点、法线和接触时刻**，再由之前已经移植的 WASM `vpx_flipper_collide` 计算球拍反冲、摩擦、自旋和剩余时间的运动。命中同一步不再二次调用旧 JS 拍面反弹；模块未加载时自动回退到旧 JS 接触搜索。计分柜显示静态墙与挡板 CCD 的实际命中次数。
+
+`tests/vpx-native-flipper-toi.mjs` 包含 8 m/s 高速穿侧面、旋转尖端扫过静止球、高架球高度过滤、背离球、WASM 冲量/去重等验证。用真实 JP v4.3 坐标完成两场三球对局，分别记录 12 与 62 次 native flipper CCD 命中并正常结束。Chrome 真正验证网页可以加载两个 WASM 模块。
+
+已知限制：原版 VPX 挡板角度在一个步长中并非严格线性，本模块以步进前后的角度差近似线性；侧面/端点碰撞不支持完整原版的多重动态接触序列、所有特殊材质和机台脚本。因此仍属于可回退的实验物理。
+
+---
+
 ## Experimental official VPX C++ physics → WebAssembly (phase 1–2)
 
 **Try it:** after opening the table, click **VPX C++ WASM 碰撞：关闭** in the score cabinet, or add `?vpxccd=1` to the page URL. Click again to revert instantly to the stable JS physics.

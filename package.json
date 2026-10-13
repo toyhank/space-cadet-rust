@@ -5,11 +5,11 @@
     "start": "py -m http.server 8000 --bind 127.0.0.1",
     "build": "node scripts/build-web.mjs",
     "build:local": "node scripts/build-web.mjs --with-local-assets",
-    "test:ci": "node tests/vpx-gameplay.mjs && node tests/vpx-gates.mjs && node tests/vpx-3d-ramps.mjs && node tests/vpx-kickback-feel.mjs && node tests/vpx-native-ccd.mjs && node tests/vpx-native-flipper.mjs && node tests/vpx-audio.mjs",
+    "test:ci": "node tests/vpx-gameplay.mjs && node tests/vpx-gates.mjs && node tests/vpx-3d-ramps.mjs && node tests/vpx-kickback-feel.mjs && node tests/vpx-native-ccd.mjs && node tests/vpx-native-flipper.mjs && node tests/vpx-native-flipper-toi.mjs && node tests/vpx-audio.mjs",
     "convert:vpx": "node scripts/convert-vpx.mjs",
     "extract:physics": "node scripts/export-vpx-physics.mjs",
     "test:vpx": "node tests/vpx-conversion.cjs && node tests/vpx-materials.cjs && node tests/vpx-lamps.cjs && node tests/vpx-browser.cjs && node tests/vpx-orbit.cjs",
-    "test:game": "node tests/vpx-gameplay.mjs && node tests/vpx-3d-ramps.mjs && node tests/vpx-script-parity.mjs && node tests/vpx-kickback-feel.mjs && node tests/vpx-physics.mjs && node tests/vpx-native-ccd.mjs && node tests/vpx-native-flipper.mjs && node tests/vpx-play.cjs"
+    "test:game": "node tests/vpx-gameplay.mjs && node tests/vpx-3d-ramps.mjs && node tests/vpx-script-parity.mjs && node tests/vpx-kickback-feel.mjs && node tests/vpx-physics.mjs && node tests/vpx-native-ccd.mjs && node tests/vpx-native-flipper.mjs && node tests/vpx-native-flipper-toi.mjs && node tests/vpx-play.cjs"
   },
   "dependencies": {
     "@francisdb/vpin-wasm": "0.38.4",

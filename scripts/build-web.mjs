@@ -6,6 +6,7 @@
  * NEVER commit a dist created with --with-local-assets.
  */
 import fs from 'node:fs/promises';
+import {inflateSync} from 'node:zlib';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -35,6 +36,14 @@ const nativeEncoded=await fs.readFile(path.join(root,'vpx/native/vpx_ccd.wasm.ba
 const nativeBytes=Buffer.from(nativeEncoded.replace(/\s/g,''),'base64');
 if(!WebAssembly.validate(nativeBytes))throw Error('Invalid VPX native CCD WASM artifact');
 await fs.writeFile(path.join(out,'vpx/native/vpx_ccd.wasm'),nativeBytes);
+// The separate tapered flipper face/tip continuous collision module is
+// checked in with deflate compression, without any compiler requirement on CI.
+const flipperCompressed=Buffer.from((await fs.readFile(
+  path.join(root,'vpx/native/vpx_flipper_ccd.wasm.deflate.base64'),'utf8'))
+  .replace(/\s/g,''),'base64');
+const flipperBytes=inflateSync(flipperCompressed);
+if(!WebAssembly.validate(flipperBytes))throw Error('Invalid VPX flipper CCD WASM artifact');
+await fs.writeFile(path.join(out,'vpx/native/vpx_flipper_ccd.wasm'),flipperBytes);
 await fs.copyFile(path.join(out,'vpx.html'),path.join(out,'index.html'));
 await fs.writeFile(path.join(out,'.nojekyll'),'');
 if(includePrivate){

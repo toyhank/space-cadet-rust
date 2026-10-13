@@ -101,5 +101,14 @@ export class VPXNativeCCD{
 export async function loadVPXNativeCCD(){
   const bytes=await getBytes();
   const {instance}=await WebAssembly.instantiate(bytes);
-  return new VPXNativeCCD(instance);
+  const native=new VPXNativeCCD(instance);
+  try{
+    const {loadVPXFlipperTOI}=await import("./vpx-flipper-toi.js");
+    native.flipperTOI=await loadVPXFlipperTOI();
+  }catch(e){
+    // Preserve the verified wall CCD + flipper impulse motor if new module
+    // is not available; the JS flipper contact search remains a fallback.
+    console.warn("VPX flipper CCD unavailable; retaining JS contact search",e);
+  }
+  return native;
 }

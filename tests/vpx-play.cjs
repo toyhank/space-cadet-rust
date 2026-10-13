@@ -92,6 +92,18 @@ async function main(){
     })()`);
     assert.ok(Math.abs(ccdResult.time-.037800002843141556)<1e-7,
       "Chrome must actually call native VPX C++ line collision code");
+    const sweptFlipper=await evalJs(`(()=>{
+      const world=window.__vpxViewer.game.game.physics;
+      const ccd=world.nativeCCD;
+      const f=world.flippers.find(f=>f.name==="LeftFlipper");
+      return {loaded:!!ccd.flipperTOI,
+        hit:ccd.flipperTOI?.find(
+          {x:.22,z:.965,y:.0122,r:.0122,vx:0,vz:-8,vy:0},
+          f,f.start,0,.02)};
+    })()`);
+    assert.ok(sweptFlipper.loaded,"Browser must instantiate VPX tapered face CCD WASM");
+    assert.ok(sweptFlipper.hit?.time>=0&&sweptFlipper.hit.time<.02,
+      "Browser executes actual VPX C++ swept flipper solver");
     assert.ok(await evalJs("document.getElementById('game-native-ccd').classList.contains('active')"));
     if(!nativeExpected){
       await evalJs('document.getElementById("game-native-ccd").click()');

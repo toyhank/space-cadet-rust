@@ -2,9 +2,9 @@
 
 ## VPX C++ → WASM 原生碰撞移植试验
 
-已从 [官方 Visual Pinball X](https://github.com/vpinball/vpinball) (GPLv3+) 提取并独立适配 **线段连续碰撞时间检测、球撞墙摩擦/自旋**，以及 **挡板线圈转矩、形状惯量、复位回弹和球拍碰撞反冲**，编译为 3.2 KB WASM。网页右侧有“VPX C++ WASM 碰撞”试验开关，或在网址加 `?vpxccd=1`。关闭即可恢复旧版 JS。
+已从 [官方 Visual Pinball X](https://github.com/vpinball/vpinball) (GPLv3+) 提取并独立适配 **线段连续碰撞时间检测、球撞墙摩擦/自旋**，以及 **挡板线圈转矩、形状惯量、复位回弹和球拍碰撞反冲**，编译为 3.2 KB WASM。另外新增 4.2 KB 的挡板侧面/尖端扫掠 CCD 模块，检测高速球与旋转球拍的首次接触。网页右侧有“VPX C++ WASM 碰撞”试验开关，或在网址加 `?vpxccd=1`。关闭即可恢复旧版 JS。
 
-**重要：普通静态墙与挡板电机/碰撞冲量使用 C++ WASM，但挡板几何接触检测仍是 JS 近似；坡道、弹射器、球球、原版脚本也仍使用现有 JS 系统。这不是完整 VPX 原生物理。** 完整技术范围与上游 GPL 授权、源码和编译步骤见 [vpx/native/NOTICE.md](vpx/native/NOTICE.md) 与 [VPX-WEB.md](VPX-WEB.md)。编译产物也提供相应源代码及 GPL 文本；原有 MIT 组件保留原协议。
+**重要：普通静态墙、挡板电机/冲量及锥形侧面/尖端接触检测使用 C++ WASM；连续碰撞根搜索采用分段二分逼近 VPX 算法，并非原版逐指令复刻。坡道、其他弹射器、球球和原版脚本仍使用现有 JS 系统。这不是完整 VPX 原生物理。** 完整技术范围与上游 GPL 授权、源码和编译步骤见 [vpx/native/NOTICE.md](vpx/native/NOTICE.md) 与 [VPX-WEB.md](VPX-WEB.md)。编译产物也提供相应源代码及 GPL 文本；原有 MIT 组件保留原协议。
 
 ## 可玩网页 / Web edition
 
