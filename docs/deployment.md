@@ -1,6 +1,6 @@
 # Public deployment
 
-GitHub Pages serves the public-safe build produced by npm run build. The repository workflow is under .github/workflows/. Use the Actions page to confirm the exact workflow and deployment result for a commit.
+GitHub Pages serves the public-safe build produced by npm run build. The workflow is in [.github/workflows/pages.yml](../.github/workflows/pages.yml); use the repository Actions page to confirm the result for a commit.
 
 ## Local public build
 
@@ -13,13 +13,14 @@ Do not use npm run build:local for Pages. That path may include local extracted 
 
 ## GitHub Pages
 
-The workflow builds and publishes from the repository. Before changing it, verify its permissions and the list of files included in the uploaded artifact. Prefer a clean checkout and the public build command. Add an artifact scan that fails if private or ignored table assets are present.
+The workflow runs npm run test:ci, builds the public bundle, audits dist/ with scripts/verify-public-build.mjs, verifies the converter WASM file, and then uploads the Pages artifact. The audit recursively scans the full build tree. It rejects any vpx-local directory, .vpx, .glb, or .vbs file, plus the known private table filenames PINBALL.DAT, CADET.DAT, and the extracted physics/script files. If the project later adds an approved public model, review its provenance and explicitly update the policy and checks.
 
 After publishing, check the Actions run, the Pages deployment environment, the English and Chinese README renderings, documentation links, and the demo URL. A green workflow confirms only the jobs it actually runs; it does not prove every optional browser or private-asset test ran.
 
 ## Local preview
 
 After npm run build, run:
+
 
 ```sh
 python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
