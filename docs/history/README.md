@@ -16,6 +16,6 @@ Selected collision routines were adapted from Visual Pinball X and compiled to W
 
 ## Archived README notes
 
-The [README at commit f49e9a8](../../blob/f49e9a8a6b7a56f8861ef73798e6fe057f2f2206/README.md) preserves the earlier long-form development log that was removed from the root README. Its screenshots, measurements, license assertions, and feature claims describe that historical state. Verify them against current code and documented asset rights before relying on or repeating them.
+The [README at commit f49e9a8](https://github.com/toyhank/space-cadet-rust/blob/f49e9a8a6b7a56f8861ef73798e6fe057f2f2206/README.md) preserves the earlier long-form development log that was removed from the root README. Its screenshots, measurements, license assertions, and feature claims describe that historical state. Verify them against current code and documented asset rights before relying on or repeating them.
 
 For exact historical changes, use the repository's Git commit history. Treat archived screenshots, measurements, and claims as historical unless reproduced against current code and a redistributable fixture.
