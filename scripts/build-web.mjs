@@ -29,6 +29,12 @@ await Promise.all([
 ]);
 // GitHub Pages serves index.html at the repository root. Existing source uses
 // relative paths, so no special base path config or bundler rewriting is needed.
+// Ship a genuine .wasm MIME-friendly binary. The checked-in base64 copy
+// allows WebAssembly builds without requiring clang/Emscripten in CI.
+const nativeEncoded=await fs.readFile(path.join(root,'vpx/native/vpx_ccd.wasm.base64'),'utf8');
+const nativeBytes=Buffer.from(nativeEncoded.replace(/\s/g,''),'base64');
+if(!WebAssembly.validate(nativeBytes))throw Error('Invalid VPX native CCD WASM artifact');
+await fs.writeFile(path.join(out,'vpx/native/vpx_ccd.wasm'),nativeBytes);
 await fs.copyFile(path.join(out,'vpx.html'),path.join(out,'index.html'));
 await fs.writeFile(path.join(out,'.nojekyll'),'');
 if(includePrivate){

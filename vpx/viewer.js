@@ -10,6 +10,7 @@ import { inspectGlb } from './conversion.js';
 import { LampController } from './lamps.js';
 import { createMaterialPreview } from './materials.js';
 import { VPXGameView } from './game-view.js';
+import { loadVPXNativeCCD } from './vpx-native.js';
 
 const $ = id => document.getElementById(id);
 const inspectionMode = new URLSearchParams(location.search).has('inspect');
@@ -237,7 +238,12 @@ async function showModel(buffer, metadata, id) {
   $('empty').hidden = true;
   for (const name of ['save-glb', 'screenshot', 'report']) $(name).disabled = false;
   populateObjects(); setLighting($('lighting').value); setMode(mode); setView('table');
-  gameplay = new VPXGameView(root,lampController,{physics: metadata.physics,
+  let nativeCCD=null;
+  if(new URLSearchParams(location.search).get("vpxccd")==="1"){
+    try{nativeCCD=await loadVPXNativeCCD();}
+    catch(err){console.warn("Experimental VPX WASM unavailable, falling back to JS physics:",err);}
+  }
+  gameplay = new VPXGameView(root,lampController,{physics: metadata.physics,nativeCCD,
     onBegin:()=>{
       controls.autoRotate=false;$('rotate').checked=false;
       setView('table');

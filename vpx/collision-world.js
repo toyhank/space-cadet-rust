@@ -26,10 +26,11 @@ function makeEdge(a,b,source){
     minZ:Math.min(z1,z2),maxZ:Math.max(z1,z2),length:Math.sqrt(len2)};
 }
 export class VPXCollisionWorld {
-  constructor(data){
+  constructor(data,options={}){
     if(!data||data.version!==1||!Array.isArray(data.segments))
       throw Error("Missing VPX collision geometry");
     this.data=data;this.edges=[];this.cells=new Map();
+    this.nativeCCD=options.nativeCCD||null;
     this.heightField=new LayeredRampWorld(data.ramps||[]);
     // One-way hinges are solved dynamically, not inserted as rigid walls.
     // A stationary 2D line at their location would trap the launch ball.
@@ -126,6 +127,56 @@ export class VPXCollisionWorld {
       ball.vx+=nx*impulse;ball.vz+=nz*impulse;
     }
     this.stats.contacts++;
+    return true;
+  }
+  /**
+   * Phase 1 VPX C++ WASM hybrid: continuous time-of-impact ONLY for ordinary
+   * rigid static VPX Wall line faces. Non-walls, endpoints, slingshots, ramps,
+   * flippers, gate hinges and scoring still use the existing JS solver.
+   *
+   * oldX/Z/Y are positions at the start of this fixed physics substep.
+   * Broadphase covers all grid cells swept through, not just the endpoint.
+   */
+  resolveNativeWallSweep(ball,oldX,oldZ,oldY,dt,game){
+    if(!this.nativeCCD||!Number.isFinite(oldX)||!Number.isFinite(oldZ)||
+       !Number.isFinite(dt)||dt<=0)return false;
+    // The shooter and scoop trough walls have special VPX hit direction/
+    // moveable gate state that is not present in the exported GLB polygons.
+    // Don't let a two-sided native line face seal those one-way launch lanes.
+    if((oldX>.455&&oldZ>.15)||ball.kickAt||
+       Math.hypot(ball.vx,ball.vz)<.055)return false;
+    const x0=Math.floor((Math.min(oldX,ball.x)-ball.r)/CELL);
+    const x1=Math.floor((Math.max(oldX,ball.x)+ball.r)/CELL);
+    const z0=Math.floor((Math.min(oldZ,ball.z)-ball.r)/CELL);
+    const z1=Math.floor((Math.max(oldZ,ball.z)+ball.r)/CELL);
+    const candidates=new Set();
+    for(let x=x0;x<=x1;x++)for(let z=z0;z<=z1;z++){
+      for(const edge of this.cells.get(gridKey(x,z))||[])candidates.add(edge);
+    }
+    const start={x:oldX,z:oldZ,y:oldY,
+      vx:ball.vx,vz:ball.vz,vy:ball.vy||0,r:ball.r};
+    let earliest=null;
+    for(const edge of candidates){
+      const source=edge.source;
+      if(source.type!=="Wall"||source.slingshot||source.name==="Wall317")continue;
+      const hit=this.nativeCCD.lineTime(start,edge,dt,true);
+      if(!hit||hit.contact||hit.time<0||hit.time>dt)continue;
+      if(!earliest||hit.time<earliest.time)earliest={...hit,edge};
+    }
+    if(!earliest)return false;
+    const {time,nx,nz,edge}=earliest;
+    // Advance to native VPX contact instead of overshooting the wall.
+    // Small outward separation avoids a second, discrete rebound.
+    ball.x=oldX+start.vx*time+nx*.000065;
+    ball.z=oldZ+start.vz*time+nz*.000065;
+    this.nativeCCD.bounce(ball,earliest,edge.source);
+    const remaining=Math.max(0,dt-time);
+    ball.x+=ball.vx*remaining;
+    ball.z+=ball.vz*remaining;
+    this.stats.contacts++;
+    this.stats.wallHits++;
+    this.stats.nativeHits=(this.stats.nativeHits||0)+1;
+    game?.send?.("wallCCD",{name:edge.source.name,ball:ball.id,time});
     return true;
   }
   solveEdges(ball,game){
@@ -465,11 +516,12 @@ export class VPXCollisionWorld {
       const horizontalDamping=ball.onRamp?.24:ball.roll?.19:.07;
       ball.vx*=Math.exp(-horizontalDamping*dt);
       ball.vz*=Math.exp(-horizontalDamping*dt);
-      const previousY=ball.y;
+      const previousY=ball.y,previousX=ball.x,previousZ=ball.z;
       this.heightField.advanceVertical(ball,dt);
       ball.x+=ball.vx*dt;
       ball.z+=ball.vz*dt;
       this.heightField.update(ball,previousY,game,dt);
+      this.resolveNativeWallSweep(ball,previousX,previousZ,previousY,dt,game);
       // Resolve the one-way exit *before* projecting out of Wall317 or a
       // flipper tip. Otherwise an already-draining ball receives an upward
       // collision impulse and can never cross this plane.

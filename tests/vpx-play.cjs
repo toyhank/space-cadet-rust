@@ -68,6 +68,36 @@ async function main(){
     assert.equal(before.ball,1);
     const physics=await evalJs("({edges:window.__vpxViewer.game.game.physics?.edges.length,flippers:window.__vpxViewer.game.game.physics?.flippers.length,bumpers:window.__vpxViewer.game.game.physics?.data.circles.length})");
     assert.ok(physics.edges>450,"Real VPX collision edge map loaded");
+    const nativeExpected=new URL(process.env.PINBALL_TEST_URL||"http://127.0.0.1:8000/vpx.html").searchParams.get("vpxccd")==="1";
+    if(nativeExpected){
+      assert.equal(await evalJs("!!window.__vpxViewer.game.game.physics.nativeCCD"),true,
+        "URL experimental VPX C++ physics switch should auto-enable");
+    }else{
+      assert.equal(await evalJs("!!window.__vpxViewer.game.game.physics.nativeCCD"),false,
+        "Experimental GPL VPX module must be opt-in");
+      await evalJs('document.getElementById("game-native-ccd").click()');
+      for(let i=0;i<60;i++){
+        if(await evalJs("!!window.__vpxViewer.game.game.physics.nativeCCD"))break;
+        await pause(100);
+      }
+      assert.equal(await evalJs("!!window.__vpxViewer.game.game.physics.nativeCCD"),true,
+        "In-game toggle must load and instantiate VPX C++ WASM");
+    }
+    const ccdResult=await evalJs(`(()=>{
+      const ccd=window.__vpxViewer.game.game.physics.nativeCCD;
+      return ccd.lineTime(
+        {x:.05,z:.1,y:.0122,r:.0122,vx:1,vz:0,vy:0},
+        {x1:.1,z1:0,x2:.1,z2:.2,
+         source:{bottom:0,top:.05}},.1);
+    })()`);
+    assert.ok(Math.abs(ccdResult.time-.037800002843141556)<1e-7,
+      "Chrome must actually call native VPX C++ line collision code");
+    assert.ok(await evalJs("document.getElementById('game-native-ccd').classList.contains('active')"));
+    if(!nativeExpected){
+      await evalJs('document.getElementById("game-native-ccd").click()');
+      assert.equal(await evalJs("!!window.__vpxViewer.game.game.physics.nativeCCD"),false,
+        "In-game WASM comparison mode switches safely back to JS");
+    }
     assert.equal(physics.flippers,2);assert.equal(physics.bumpers,7);
     assert.equal(await evalJs("getComputedStyle(document.getElementById('inspector')).display"),"none","No debug sidebar in game mode");
     assert.notEqual(await evalJs("getComputedStyle(document.getElementById('game-cabinet')).display"),"none");

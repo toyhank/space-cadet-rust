@@ -1,5 +1,27 @@
 # VPX 网页版本（真实 VPX 碰撞几何 + 游戏规则）
 
+## Experimental official VPX C++ physics → WebAssembly (phase 1)
+
+**Try it:** after opening the table, click **VPX C++ WASM 碰撞：关闭** in the score cabinet, or add `?vpxccd=1` to the page URL. Click again to revert instantly to the stable JS physics.
+
+This is an **experimental hybrid solver, NOT the full VPX engine**. We have adapted the official GPLv3+ Visual Pinball X routines `LineSeg::HitTestBasic` (continuous *static line wall* time of impact) and `HitBall::Collide3DWall` (wall normal impulse, restitution falloff, Coulomb friction and ball angular spin) into a dependency-free C++17 library that compiles to a 1,788-byte WebAssembly module. Physical units are converted between VPX's VPU / 10ms timestep and the web GLB meters / seconds.
+
+The game now sweeps through all spatial grid cells along a ball's step and applies the C++ WASM contact response to relevant static walls. The legacy solver handles every other mechanism: **flippers, bumpers, slingshots, gates, high ramps, kicker, ball-ball, scoring, VBS events**. We exclude the one-way shooter trough and missing direction-tagged edges from this first migration because the VPX exported geometry lacks their true hit-side constraints.
+
+- Real C++ source: `vpx/native/vpx_ccd.cpp`
+- Prebuilt WASM checked in as base64: `vpx/native/vpx_ccd.wasm.base64`; `npm run build` emits the actual `dist/vpx/native/vpx_ccd.wasm`
+- Browser wrapper / optional fallback: `vpx/vpx-native.js`
+- Unit + native C++ vs WASM parity fixtures: `tests/vpx-native-ccd.mjs`
+- Upstream attribution and GPL-3.0-or-later full terms: `vpx/native/NOTICE.md`, `vpx/native/LICENSE-GPL-3.0.txt`
+- Results: a synthetic 2m/s ball no longer tunnels through a thin static wall. Both unattended and periodically operated full JP v4.3 three-ball simulations finish normally with real WASM collisions; real Chrome 3D gameplay also passes.
+
+**License:** Preexisting MIT files keep their MIT notices, but **the copied/adapted VPX C++ and built WASM are GPL-3.0-or-later**, and distributing a combined web application may require GPL compliance for the combined work. Source and license are shipped with the module. This is not a representation that the full engine has been relicensed under MIT. Licensed table artwork/VBS remains excluded from public deployment.
+
+**Next phases for true VPX fidelity:** point and circle continuous collision, accurate one-sided wall export, flipper motor/collision dynamics, full 3D triangle/ramp CCD, contact loop/broadphase parity, physics timing and VBS event runtime. We have **not** migrated those yet.
+
+---
+
+
 ## 2026-10-12：左侧机关与挡板手感专项修复
 
 症状：**左边的机关弹不上去**。测试把球放在本机 JP v4.3 原版 `LeftKickerRest` (x≈0.03905,z≈0.89577)，原实现等待 1.5 秒发射、却只设置 `vz=-1.8`：球在 z≈0.668 撞到 `Bumper7` 后掉回机关中，甚至循环卡球。不是没有计时触发，而是简化求解器没有模拟该通道从低位跨越障碍的空间运动。

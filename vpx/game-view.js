@@ -15,11 +15,11 @@ export class VPXGameView {
       const point=o.getWorldPosition(new THREE.Vector3());
       coordinates.push({name:o.name,position:{x:point.x,y:point.y,z:point.z}});
     });
-    this.game=new CadetGame(extractPositions(coordinates),{physics:options.physics});
+    this.game=new CadetGame(extractPositions(coordinates),{physics:options.physics,nativeCCD:options.nativeCCD});
     const physical=this.game.physics;
     // Physics diagnostics are available only in the separate inspection mode.
     if($("game-physics-info"))$("game-physics-info").textContent=physical?
-      `${physical.edges.length} VPX collider segments`:"Simplified collisions";
+      `${physical.edges.length} VPX collider segments${physical.nativeCCD?" · VPX C++ WASM CCD (EXPERIMENTAL)":""}`:"Simplified collisions";
     this.running=false;this.last=performance.now();
     this.keys={left:false,right:false,space:false};
     this.ballModels=new Map();this.bumperFlash=new Map();
@@ -41,6 +41,7 @@ export class VPXGameView {
     this.onBlur=()=>{this.keys.left=this.keys.right=this.keys.space=false;this.syncKeys();};
     this.originalDmdMeshes=[];
     this.setupObjects();this.setupBindings();
+    this.updateCCDLabel();
     this.showBestScore();
   }
   setupObjects(){
@@ -135,6 +136,7 @@ export class VPXGameView {
     $("game-pause").onclick=()=>this.togglePause();
     $("game-nudge").onclick=()=>this.game.nudge(this.game.rng()<.5?-1:1);
     $("game-start").onclick=()=>{this.audio.unlock();this.begin();};
+    $("game-native-ccd").onclick=()=>this.toggleNativeCCD();
     $("game-sound").checked=this.audio.enabled;
     $("game-volume").value=String(Math.round(this.audio.volume*100));
     $("game-volume-label").textContent=Math.round(this.audio.volume*100)+"%";
@@ -158,6 +160,36 @@ export class VPXGameView {
     $("game-save-score").onclick=()=>this.registerScore();
     $("game-exit").onclick=()=>this.stop();
     $("game-dashboard").hidden=false;
+  }
+  updateCCDLabel(){
+    const enabled=!!this.game.physics?.nativeCCD;
+    const button=$("game-native-ccd");
+    if(!button)return;
+    button.textContent="VPX C++ WASM 碰撞："+(enabled?"开启":"关闭");
+    button.classList.toggle("active",enabled);
+    button.disabled=!this.game.physics;
+    const stats=$("game-ccd-stats");
+    if(stats)stats.textContent=enabled?
+      "实验模式：仅静态墙 CCD · 命中 "+(this.game.physics.stats.nativeHits||0):
+      "静态墙试验 · 其他物理仍用 JS";
+  }
+  async toggleNativeCCD(){
+    const physics=this.game.physics;
+    if(!physics)return;
+    if(physics.nativeCCD)physics.nativeCCD=null;
+    else{
+      const button=$("game-native-ccd");
+      button.disabled=true;button.textContent="加载 VPX WASM…";
+      try{
+        const {loadVPXNativeCCD}=await import("./vpx-native.js");
+        physics.nativeCCD=await loadVPXNativeCCD();
+        this.announce("VPX C++ CCD", "STATIC WALLS ONLY · EXPERIMENTAL",2200);
+      }catch(e){
+        console.warn("VPX native collision module unavailable:",e);
+        this.announce("VPX CCD FAILED", "USING SAFE JS PHYSICS",2200);
+      }
+    }
+    this.updateCCDLabel();
   }
   saveAudioSettings(){
     try{localStorage.setItem("space-cadet-audio",JSON.stringify({
@@ -462,6 +494,8 @@ export class VPXGameView {
   renderHud(){
     const s=this.game.status;
     $("game-score").textContent=String(s.score).padStart(8,"0");
+    if(this.game.physics?.nativeCCD)$("game-ccd-stats").textContent=
+      "实验模式：仅静态墙 CCD · 命中 "+(this.game.physics.stats.nativeHits||0);
     $("game-mode").textContent=s.over?"GAME OVER":s.paused?"PAUSED":s.tilted?"TILT":s.balls>1?"MULTIBALL":s.plungerLoaded?"READY TO LAUNCH":"BALL IN PLAY";
     $("game-ball").textContent=s.ball+" / 3";
     $("game-rank").textContent=s.rank+" · "+s.progress+"/18";

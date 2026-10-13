@@ -35,7 +35,7 @@ export class CadetGame{
     this.positions=positions;
     this.events=[];
     this.rng=options.random||Math.random;
-    this.physics=options.physics?new VPXCollisionWorld(options.physics):null;
+    this.physics=options.physics?new VPXCollisionWorld(options.physics,{nativeCCD:options.nativeCCD}):null;
     this.start();
   }
   getPoint(name,fallback) {

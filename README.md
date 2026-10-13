@@ -1,5 +1,11 @@
 # Space Cadet · VPX → Rust/WASM → GLB → Three.js
 
+## VPX C++ → WASM 原生碰撞移植试验
+
+已从 [官方 Visual Pinball X](https://github.com/vpinball/vpinball) (GPLv3+) 提取并独立适配 **线段连续碰撞时间检测**和**球撞墙摩擦/自旋计算**，编译为 1.8 KB WASM。网页右侧有“VPX C++ WASM 碰撞”试验开关，或在网址加 `?vpxccd=1`。关闭即可恢复旧版 JS。
+
+**重要：仅普通静态墙壁采用 C++ WASM；挡板、坡道、弹射器、球球、原版脚本仍使用现有 JS 系统。这不是完整 VPX 原生物理。** 完整技术范围与上游 GPL 授权、源码和编译步骤见 [vpx/native/NOTICE.md](vpx/native/NOTICE.md) 与 [VPX-WEB.md](VPX-WEB.md)。编译产物也提供相应源代码及 GPL 文本；原有 MIT 组件保留原协议。
+
 ## 可玩网页 / Web edition
 
 **本机游玩：** http://127.0.0.1:8000/vpx.html
